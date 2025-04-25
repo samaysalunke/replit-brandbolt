@@ -38,7 +38,10 @@ passport.use(new LinkedInStrategy({
   clientID: process.env.LINKEDIN_CLIENT_ID as string,
   clientSecret: process.env.LINKEDIN_CLIENT_SECRET as string,
   callbackURL: CALLBACK_URL,
-  scope: ['r_emailaddress', 'r_liteprofile'],
+  // Update scopes to match what's approved in your LinkedIn developer portal
+  // Common approved scopes are: r_liteprofile, r_emailaddress, w_member_social
+  // If one scope fails, try with just the basic profile scope
+  scope: ['r_liteprofile'],
   state: true
 }, async function(accessToken: string, refreshToken: string, profile: any, done: any) {
   console.log('LinkedIn OAuth callback received. Profile ID:', profile?.id);

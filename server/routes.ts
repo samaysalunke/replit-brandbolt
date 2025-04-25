@@ -178,7 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })
   };
   
-  app.use(session(sessionConfig));
+  app.use(expressSession(sessionConfig));
 
   // Setup passport
   app.use(passport.initialize());
