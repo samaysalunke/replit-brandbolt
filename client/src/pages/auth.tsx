@@ -29,18 +29,15 @@ export default function Auth() {
       }}
     >
       <Container maxWidth="sm">
-        <Box sx={{ textAlign: 'center', mb: 6 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+        <Box sx={{ textAlign: 'center', mb: 4 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
             <BoltIcon sx={{ fontSize: 40, color: 'primary.main' }} />
             <Typography variant="h3" component="span" sx={{ fontWeight: 'bold', color: 'primary.main', ml: 1 }}>
               BrandBolt
             </Typography>
           </Box>
           <Typography variant="h5" sx={{ fontWeight: 'medium' }}>
-            LinkedIn Branding Coach
-          </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
-            Optimize your LinkedIn presence and grow your personal brand
+            10x Your LinkedIn Growth
           </Typography>
         </Box>
         
@@ -53,26 +50,21 @@ export default function Auth() {
         >
           <Box 
             sx={{ 
-              p: 4, 
+              p: 3, 
               bgcolor: 'primary.main',
               color: 'primary.contrastText',
               textAlign: 'center'
             }}
           >
-            <Typography variant="h5" component="h2" gutterBottom>
-              Connect with LinkedIn
-            </Typography>
-            <Typography variant="body1">
-              Sign in with your LinkedIn account to get started with BrandBolt
+            <Typography variant="h5" component="h2">
+              Get Expert-Level LinkedIn Content
             </Typography>
           </Box>
           
-          <CardContent sx={{ p: 4 }}>
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="body1" sx={{ mb: 2, textAlign: 'center' }}>
-                Link your LinkedIn profile to unlock powerful branding tools, content creation, and analytics.
-              </Typography>
-            </Box>
+          <CardContent sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="body1" sx={{ fontWeight: 'medium', mb: 3 }}>
+              AI-powered content that gets 5x more engagement
+            </Typography>
             
             <Button 
               variant="contained" 
@@ -88,19 +80,16 @@ export default function Auth() {
                 }
               }}
             >
-              Sign in with LinkedIn
+              Connect LinkedIn
             </Button>
             
-            <Box sx={{ mt: 4, textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                For demonstration purposes only
-              </Typography>
+            <Box sx={{ mt: 3, textAlign: 'center' }}>
               <Button 
-                variant="outlined" 
+                variant="text" 
+                size="small"
                 onClick={handleDemoLogin}
-                sx={{ mt: 1 }}
               >
-                Demo Access
+                Try Demo
               </Button>
             </Box>
           </CardContent>
