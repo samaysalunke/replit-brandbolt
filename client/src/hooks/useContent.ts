@@ -25,6 +25,17 @@ export interface CreatePostData {
   status: 'draft' | 'scheduled' | 'published';
 }
 
+export interface OptimizePostData {
+  content: string;
+  goal?: 'engagement' | 'connections' | 'visibility' | 'thought-leadership';
+}
+
+export interface OptimizedPost {
+  optimizedContent: string;
+  suggestions: string[];
+  estimatedImprovement: string;
+}
+
 export function useContent() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -93,6 +104,20 @@ export function useContent() {
     }
   });
   
+  const optimizePostMutation = useMutation<OptimizedPost, Error, OptimizePostData>({
+    mutationFn: async (data: OptimizePostData) => {
+      const response = await apiRequest('POST', '/api/posts/optimize', data);
+      return await response.json() as OptimizedPost;
+    },
+    onError: () => {
+      toast({
+        title: "Optimization failed",
+        description: "There was an error optimizing your post content.",
+        variant: "destructive"
+      });
+    }
+  });
+  
   const createPost = (data: CreatePostData) => {
     createPostMutation.mutate(data);
   };
@@ -117,16 +142,22 @@ export function useContent() {
     return postsQuery.data?.filter(post => post.status === 'published') || [];
   };
   
+  const optimizePost = (data: OptimizePostData) => {
+    return optimizePostMutation.mutateAsync(data);
+  };
+
   return {
     ...postsQuery,
     createPost,
     updatePost,
     deletePost,
+    optimizePost,
     getDraftPosts,
     getScheduledPosts,
     getPublishedPosts,
     isCreating: createPostMutation.isPending,
     isUpdating: updatePostMutation.isPending,
-    isDeleting: deletePostMutation.isPending
+    isDeleting: deletePostMutation.isPending,
+    isOptimizing: optimizePostMutation.isPending
   };
 }
