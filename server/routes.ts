@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
 import MemoryStore from "memorystore";
@@ -14,6 +14,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
+import { isAuthenticated, fetchLinkedInProfileData } from './linkedin-auth';
 
 function generateMockProfileData(userId: number) {
   // This data would come from LinkedIn API in a real implementation
@@ -219,6 +220,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid input data", errors: fromZodError(err).message });
       }
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // LinkedIn OAuth Routes
+  
+  // Start LinkedIn OAuth flow
+  app.get('/api/auth/linkedin', passport.authenticate('linkedin'));
+  
+  // LinkedIn OAuth callback
+  app.get('/api/auth/linkedin/callback', 
+    passport.authenticate('linkedin', { 
+      failureRedirect: '/auth',
+      failureMessage: true
+    }),
+    (req, res) => {
+      // Successful authentication, redirect to dashboard
+      res.redirect('/dashboard');
+    }
+  );
+  
+  // Get profile data from LinkedIn
+  app.get('/api/auth/linkedin/profile', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.accessToken) {
+        return res.status(400).json({ message: "No LinkedIn access token found" });
+      }
+      
+      const profileData = await fetchLinkedInProfileData(user.accessToken);
+      res.json(profileData);
+    } catch (error) {
+      console.error('Error fetching LinkedIn profile:', error);
+      res.status(500).json({ message: "Failed to fetch LinkedIn profile" });
     }
   });
 
