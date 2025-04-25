@@ -226,7 +226,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // LinkedIn OAuth Routes
   
   // Start LinkedIn OAuth flow
-  app.get('/api/auth/linkedin', passport.authenticate('linkedin'));
+  app.get('/api/auth/linkedin', (req, res, next) => {
+    // Store the return URL in the session if it's provided
+    if (req.query.returnTo) {
+      req.session.returnTo = req.query.returnTo as string;
+    }
+    
+    passport.authenticate('linkedin')(req, res, next);
+  });
   
   // LinkedIn OAuth callback
   app.get('/api/auth/linkedin/callback', 
@@ -235,8 +242,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       failureMessage: true
     }),
     (req, res) => {
-      // Successful authentication, redirect to dashboard
-      res.redirect('/dashboard');
+      // Determine where to redirect after successful login
+      const returnTo = req.session.returnTo || '/dashboard';
+      delete req.session.returnTo;
+      
+      // Successful authentication, redirect to the specified page
+      res.redirect(returnTo);
     }
   );
   

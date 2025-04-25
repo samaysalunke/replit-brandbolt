@@ -3,6 +3,7 @@ import { Strategy as LinkedInStrategy } from 'passport-linkedin-oauth2';
 import { storage } from './storage';
 import axios from 'axios';
 import { Request, Response, NextFunction } from 'express';
+import { InsertUser, InsertProfile } from '@shared/schema';
 
 const CALLBACK_URL = process.env.NODE_ENV === 'production' 
   ? 'https://your-app-url.com/api/auth/linkedin/callback' 
@@ -15,7 +16,7 @@ passport.use(new LinkedInStrategy({
   callbackURL: CALLBACK_URL,
   scope: ['r_emailaddress', 'r_liteprofile'],
   state: true
-}, async (accessToken, refreshToken, profile, done) => {
+}, async function(accessToken: string, refreshToken: string, profile: any, done: any) {
   try {
     // Check if user exists by LinkedIn ID
     let user = await storage.getUserByLinkedInId(profile.id);
@@ -24,25 +25,27 @@ passport.use(new LinkedInStrategy({
       // If user doesn't exist, create a new user
       const email = profile.emails && profile.emails.length > 0 
         ? profile.emails[0].value 
-        : null;
+        : '';
       const fullName = profile.displayName || `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`.trim();
       
-      user = await storage.createUser({
+      // Create user data object compliant with our schema
+      const userData: InsertUser = {
         username: profile.id, // Use LinkedIn ID as username
         password: '', // No password needed for OAuth users
-        email: email || '',
+        email: email,
         fullName: fullName,
         linkedinId: profile.id,
         accessToken,
         refreshToken: refreshToken || '',
         isConnected: true,
-        createdAt: new Date().toISOString(),
         profileImage: profile.photos && profile.photos.length > 0 ? profile.photos[0].value : '',
         headline: profile._json?.headline || ''
-      });
+      };
+      
+      user = await storage.createUser(userData);
 
       // Create default profile for the user
-      await storage.createProfile({
+      const profileData: InsertProfile = {
         userId: user.id,
         profileData: {
           score: 0,
@@ -55,9 +58,10 @@ passport.use(new LinkedInStrategy({
           suggestions: [],
           recentPosts: []
         },
-        profileScore: 0,
-        lastUpdated: new Date().toISOString()
-      });
+        profileScore: 0
+      };
+      
+      await storage.createProfile(profileData);
     } else {
       // Update existing user with new tokens
       await storage.updateUser(user.id, {
@@ -138,7 +142,7 @@ export async function fetchLinkedInProfileData(accessToken: string) {
 
 // Serialize user to session
 passport.serializeUser((user: Express.User, done) => {
-  done(null, user.id);
+  done(null, (user as any).id);
 });
 
 // Deserialize user from session
