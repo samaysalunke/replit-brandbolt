@@ -147,19 +147,20 @@ async function generateContentIdeas(userId: number) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Create the session store
-  const memoryStore = MemoryStore as any;
-  const SessionStore = memoryStore(session);
+  // Use MemoryStore with the correct type cast for compatibility
+  const MemStoreFactory = MemoryStore as any;
+  const SessionStore = MemStoreFactory(session);
 
-  // We're using session-types.ts to declare the returnTo property
-
-  // Setup session
+  // Setup session middleware
   app.use(
     session({
       secret: process.env.SESSION_SECRET || "brandbolt-secret",
       resave: false,
       saveUninitialized: false,
-      cookie: { secure: process.env.NODE_ENV === "production", maxAge: 86400000 }, // 1 day
+      cookie: { 
+        secure: process.env.NODE_ENV === "production", 
+        maxAge: 86400000 // 1 day
+      },
       store: new SessionStore({
         checkPeriod: 86400000, // 24 hours
       }),

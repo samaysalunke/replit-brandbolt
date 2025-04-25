@@ -4,6 +4,24 @@ import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 
+interface UserData {
+  id: number;
+  username: string;
+  email: string;
+  fullName: string;
+  linkedinId?: string;
+  accessToken?: string;
+  isConnected?: boolean;
+  profileImage?: string;
+  headline?: string;
+  createdAt: string;
+}
+
+interface AuthResponse {
+  message: string;
+  user: UserData;
+}
+
 interface LoginCredentials {
   username: string;
   password: string;
@@ -14,13 +32,22 @@ interface RegisterCredentials extends LoginCredentials {
   fullName?: string;
 }
 
+interface LinkedInProfile {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  profilePicture: string | null;
+  headline: string | null;
+}
+
 export function useAuth() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   
-  const loginMutation = useMutation({
+  const loginMutation = useMutation<AuthResponse, Error, LoginCredentials>({
     mutationFn: async (credentials: LoginCredentials) => {
       return await apiRequest('POST', '/api/auth/login', credentials);
     },
@@ -30,7 +57,7 @@ export function useAuth() {
         title: "Login successful",
         description: "You have successfully logged in"
       });
-      setLocation('/');
+      setLocation('/dashboard');
     },
     onError: (error) => {
       toast({
@@ -41,18 +68,20 @@ export function useAuth() {
     }
   });
   
-  const registerMutation = useMutation({
+  // Type the register mutation variables
+  const registerMutation = useMutation<any, Error, RegisterCredentials>({
     mutationFn: async (credentials: RegisterCredentials) => {
       return await apiRequest('POST', '/api/auth/register', credentials);
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       toast({
         title: "Registration successful",
         description: "Your account has been created. You can now log in."
       });
-      return loginMutation.mutate({ 
-        username: registerMutation.variables?.username || '', 
-        password: registerMutation.variables?.password || '' 
+      // Use the variables directly from the onSuccess parameters
+      loginMutation.mutate({ 
+        username: variables.username, 
+        password: variables.password 
       });
     },
     onError: (error) => {
@@ -64,7 +93,7 @@ export function useAuth() {
     }
   });
   
-  const logoutMutation = useMutation({
+  const logoutMutation = useMutation<any, Error, void>({
     mutationFn: async () => {
       return await apiRequest('POST', '/api/auth/logout', {});
     },
@@ -100,17 +129,18 @@ export function useAuth() {
     logoutMutation.mutate();
   };
   
-  // Get current user
-  const { data: currentUser, isLoading: isUserLoading } = useQuery({
+  // Get current user with proper type definitions
+  const { data: userData, isLoading: isUserLoading } = useQuery<{ user: UserData } | null>({
     queryKey: ['/api/auth/user'],
     enabled: true,
     retry: false,
   });
 
-  // Fetch LinkedIn profile data
-  const linkedinProfileQuery = useQuery({
+  // Fetch LinkedIn profile data with proper type
+  const linkedinProfileQuery = useQuery<LinkedInProfile>({
     queryKey: ['/api/auth/linkedin/profile'],
-    enabled: !!currentUser?.user?.isConnected && !!currentUser?.user?.accessToken,
+    // Only query if the user is connected to LinkedIn and has an access token
+    enabled: !!(userData?.user?.isConnected && userData?.user?.accessToken),
     refetchOnWindowFocus: false,
   });
 
@@ -118,9 +148,10 @@ export function useAuth() {
     login,
     register,
     logout,
-    currentUser: currentUser?.user, 
-    isAuthenticated: !!currentUser?.user,
+    currentUser: userData?.user, 
+    isAuthenticated: !!userData?.user,
     linkedinProfile: linkedinProfileQuery.data,
-    isLoading: isLoading && (loginMutation.isPending || registerMutation.isPending || logoutMutation.isPending || isUserLoading || linkedinProfileQuery.isLoading)
+    isLoading: isLoading || loginMutation.isPending || registerMutation.isPending || 
+               logoutMutation.isPending || isUserLoading || linkedinProfileQuery.isLoading
   };
 }
