@@ -5,30 +5,24 @@ import axios from 'axios';
 import { Request, Response, NextFunction } from 'express';
 import { InsertUser, InsertProfile } from '@shared/schema';
 
-// Use the Replit domain for the callback URL
+// We need to ensure our callback URL matches exactly what's registered in LinkedIn Developer Portal
 const getCallbackUrl = () => {
-  // Check for REPLIT_DOMAINS environment variable which contains the app URL on Replit
-  if (process.env.REPLIT_DOMAINS) {
-    try {
-      // The domain appears to be a plain string, not JSON
-      const domain = process.env.REPLIT_DOMAINS;
-      console.log(`Using Replit domain for callback: ${domain}`);
-      return `https://${domain}/api/auth/linkedin/callback`;
-    } catch (error) {
-      console.error('Error parsing REPLIT_DOMAINS:', error);
-    }
-  }
+  // Important: The callback URL must match what's registered in LinkedIn developer console
+  // If we're getting "redirect_uri doesn't match registered value" errors,
+  // it means this URL doesn't match what's in the LinkedIn developer settings
   
-  // Alternative: use slug and owner as fallback
-  if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
-    const domain = `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
-    console.log(`Using Replit domain (fallback) for callback: ${domain}`);
-    return `https://${domain}/api/auth/linkedin/callback`;
-  }
+  // Since we're getting redirect_uri mismatch errors, we'll try a simpler approach with
+  // a fixed callback that should match what's registered in LinkedIn
   
-  // Fallback to localhost for local development
-  console.log("Using localhost for callback - no Replit domain detected");
-  return 'http://localhost:5000/api/auth/linkedin/callback';
+  // This approach requires registering this exact URL in LinkedIn Developer Portal:
+  // https://linkedin-growth-coach.replit.app/api/auth/linkedin/callback
+  
+  // Note: If you're still getting redirect_uri errors, you'll need to update the
+  // registered callback URL in the LinkedIn Developer Portal to match this URL:
+  const FIXED_CALLBACK_URL = 'https://linkedin-growth-coach.replit.app/api/auth/linkedin/callback';
+  
+  console.log(`Using fixed callback URL: ${FIXED_CALLBACK_URL}`);
+  return FIXED_CALLBACK_URL;
 };
 
 // Get and log the callback URL

@@ -251,14 +251,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       failureMessage: true
     }),
     (req, res) => {
-      // Determine where to redirect after successful login
-      // Use type assertion to handle session property access
-      const sessionData = req.session as any;
-      const returnTo = sessionData.returnTo || '/dashboard';
-      delete sessionData.returnTo;
+      // Log the successful authentication
+      console.log(`LinkedIn auth successful, user ID: ${(req.user as any)?.id}`);
       
-      // Log the successful authentication and redirect
-      console.log(`LinkedIn auth successful, user: ${JSON.stringify(req.user)}`);
+      // Determine where to redirect after successful login
+      let returnTo = '/dashboard'; // Default redirect location
+      
+      // Check for returnTo in session
+      if (req.session && (req.session as any).returnTo) {
+        returnTo = (req.session as any).returnTo;
+        delete (req.session as any).returnTo;
+      }
+      
       console.log(`Redirecting to: ${returnTo}`);
       
       // Successful authentication, redirect to the specified page
