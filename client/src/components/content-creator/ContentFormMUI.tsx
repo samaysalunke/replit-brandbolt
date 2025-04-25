@@ -36,7 +36,7 @@ import {
   Today as TodayIcon
 } from '@mui/icons-material';
 import { useContent, CreatePostData } from '@/hooks/useContent';
-import { OptimizeButtonMUI } from './OptimizeButtonMUI';
+import { OptimizeButtonMUI } from '../content-creator/OptimizeButtonMUI';
 
 interface TabPanelProps {
   children?: React.ReactNode;

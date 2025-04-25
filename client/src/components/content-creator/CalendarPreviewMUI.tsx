@@ -86,7 +86,7 @@ export function CalendarPreviewMUI() {
 
       <Grid container columns={7}>
         {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
-          <Grid item xs={1} key={index} sx={{ textAlign: 'center' }}>
+          <Grid item component="div" xs={1} key={index} sx={{ textAlign: 'center' }}>
             <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
               {day}
             </Typography>
@@ -96,7 +96,7 @@ export function CalendarPreviewMUI() {
 
       <Grid container columns={7}>
         {Array.from({ length: startDay }).map((_, index) => (
-          <Grid item xs={1} key={`empty-${index}`} sx={{ p: 0.5 }}>
+          <Grid item component="div" xs={1} key={`empty-${index}`} sx={{ p: 0.5 }}>
             <Box 
               sx={{ 
                 height: '32px', 
@@ -114,7 +114,7 @@ export function CalendarPreviewMUI() {
           const hasPosts = postsForDay.length > 0;
 
           return (
-            <Grid item xs={1} key={day.toString()} sx={{ p: 0.5 }}>
+            <Grid item component="div" xs={1} key={day.toString()} sx={{ p: 0.5 }}>
               <Paper 
                 elevation={0}
                 sx={{ 

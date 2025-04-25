@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Box, 
   Container,
-  Grid, 
+  Stack, 
   Typography, 
   Card, 
   CardContent, 
@@ -49,7 +49,7 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-export default function ContentCreatorMUI() {
+export default function ContentCreatorMUIFixed() {
   const { getDraftPosts, getScheduledPosts } = useContent();
   const [tabValue, setTabValue] = useState(0);
 
@@ -73,9 +73,9 @@ export default function ContentCreatorMUI() {
         </Typography>
       </Box>
       
-      <Grid container spacing={3}>
+      <Box sx={{ display: 'flex', flexDirection: {xs: 'column', md: 'row'}, gap: 3 }}>
         {/* Main Content Area */}
-        <Grid item component="div" xs={12} md={8}>
+        <Box sx={{ flexGrow: 1, width: {xs: '100%', md: '70%'} }}>
           <Paper elevation={0} variant="outlined">
             <Tabs 
               value={tabValue} 
@@ -123,7 +123,7 @@ export default function ContentCreatorMUI() {
                   />
                   <CardContent>
                     {getDraftPosts().length > 0 ? (
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <Stack spacing={2}>
                         {getDraftPosts().map(post => (
                           <Paper 
                             key={post.id} 
@@ -145,7 +145,7 @@ export default function ContentCreatorMUI() {
                             </Box>
                           </Paper>
                         ))}
-                      </Box>
+                      </Stack>
                     ) : (
                       <Box sx={{ textAlign: 'center', py: 4 }}>
                         <ArticleIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
@@ -171,7 +171,7 @@ export default function ContentCreatorMUI() {
                   />
                   <CardContent>
                     {getScheduledPosts().length > 0 ? (
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <Stack spacing={2}>
                         {getScheduledPosts().map(post => (
                           <Paper 
                             key={post.id} 
@@ -193,7 +193,7 @@ export default function ContentCreatorMUI() {
                             </Box>
                           </Paper>
                         ))}
-                      </Box>
+                      </Stack>
                     ) : (
                       <Box sx={{ textAlign: 'center', py: 4 }}>
                         <ScheduleIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
@@ -210,11 +210,11 @@ export default function ContentCreatorMUI() {
               </Box>
             </TabPanel>
           </Paper>
-        </Grid>
+        </Box>
         
         {/* Sidebar */}
-        <Grid item component="div" xs={12} md={4}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Box sx={{ width: {xs: '100%', md: '30%'} }}>
+          <Stack spacing={3}>
             <Card variant="outlined">
               <CardHeader 
                 title={
@@ -238,9 +238,9 @@ export default function ContentCreatorMUI() {
                 }}
               />
             )}
-          </Box>
-        </Grid>
-      </Grid>
+          </Stack>
+        </Box>
+      </Box>
     </Container>
   );
 }
