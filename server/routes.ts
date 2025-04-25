@@ -584,6 +584,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Optimize a post using AI
+  app.post("/api/posts/optimize", isAuthenticated, async (req, res) => {
+    try {
+      const { content, goal } = req.body;
+      
+      if (!content) {
+        return res.status(400).json({ message: "Content is required" });
+      }
+      
+      const optimizationGoal = goal || "engagement";
+      const optimizedPost = await optimizeLinkedInPost(content, optimizationGoal);
+      
+      res.json(optimizedPost);
+    } catch (err) {
+      console.error("Error optimizing post:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
   // === ANALYTICS ENDPOINTS ===
   
   app.get("/api/analytics/overview", isAuthenticated, async (req, res) => {
@@ -655,9 +674,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
         });
         
-        // Create content suggestions
-        const ideas = await generateContentIdeas(user.id);
-        for (const idea of ideas) {
+        // Create predefined content suggestions
+        const staticIdeas = [
+          {
+            title: "Industry Insights",
+            content: "5 Ways AI is Transforming Marketing Strategy in 2023 - My Experience Implementing These Changes",
+            category: "insight",
+            estimatedEngagement: "high"
+          },
+          {
+            title: "Personal Story",
+            content: "The Career Pivot That Changed Everything: How I Went From [Previous Role] to [Current Role] in 12 Months",
+            category: "story",
+            estimatedEngagement: "medium"
+          },
+          {
+            title: "How-To Guide",
+            content: "LinkedIn Engagement Hack: How I Increased My Post Visibility by 300% Using This Simple 3-Step Process",
+            category: "how-to",
+            estimatedEngagement: "very-high"
+          },
+          {
+            title: "Opinion Piece",
+            content: "Why I Believe [Industry Trend] Is Overrated - And What We Should Focus On Instead",
+            category: "opinion",
+            estimatedEngagement: "high"
+          }
+        ];
+        
+        for (const idea of staticIdeas) {
           await storage.createContentSuggestion({
             userId: user.id,
             title: idea.title,

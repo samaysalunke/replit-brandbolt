@@ -128,7 +128,9 @@ Format your response as a JSON object with the following schema:
       response_format: { type: "json_object" }
     });
 
-    return JSON.parse(response.choices[0].message.content);
+    // Handle potential null content
+    const content = response.choices[0].message.content || '{"optimizedContent":"","suggestions":[],"estimatedImprovement":"0%"}';
+    return JSON.parse(content);
   } catch (error) {
     console.error("Error optimizing content with OpenAI:", error);
     // Fallback response in case of API error
@@ -189,7 +191,9 @@ Provide your analysis in a JSON object with the following schema:
       response_format: { type: "json_object" }
     });
 
-    return JSON.parse(response.choices[0].message.content);
+    // Handle potential null content
+    const content = response.choices[0].message.content || '{"score":50,"strengths":[],"weaknesses":[],"suggestions":[]}';
+    return JSON.parse(content);
   } catch (error) {
     console.error("Error analyzing profile with OpenAI:", error);
     // Fallback analysis in case of API error
