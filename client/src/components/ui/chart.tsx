@@ -504,7 +504,8 @@ const LineChart: React.FC<LineChartProps> = ({
 }) => {
   if (categoryField) {
     // Get unique categories
-    const categories = [...new Set(data.map(item => item[categoryField]))];
+    const categoriesSet = new Set(data.map(item => item[categoryField]));
+    const categories = Array.from(categoriesSet);
     
     const config: ChartConfig = {};
     categories.forEach((category, index) => {
