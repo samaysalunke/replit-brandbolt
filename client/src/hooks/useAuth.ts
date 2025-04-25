@@ -49,7 +49,9 @@ export function useAuth() {
   
   const loginMutation = useMutation<AuthResponse, Error, LoginCredentials>({
     mutationFn: async (credentials: LoginCredentials) => {
-      return await apiRequest('POST', '/api/auth/login', credentials);
+      const response = await apiRequest('POST', '/api/auth/login', credentials);
+      const data = await response.json();
+      return data as AuthResponse;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
@@ -69,9 +71,11 @@ export function useAuth() {
   });
   
   // Type the register mutation variables
-  const registerMutation = useMutation<any, Error, RegisterCredentials>({
+  const registerMutation = useMutation<{message: string}, Error, RegisterCredentials>({
     mutationFn: async (credentials: RegisterCredentials) => {
-      return await apiRequest('POST', '/api/auth/register', credentials);
+      const response = await apiRequest('POST', '/api/auth/register', credentials);
+      const data = await response.json();
+      return data as {message: string};
     },
     onSuccess: (data, variables) => {
       toast({
@@ -93,9 +97,11 @@ export function useAuth() {
     }
   });
   
-  const logoutMutation = useMutation<any, Error, void>({
+  const logoutMutation = useMutation<{message: string}, Error, void>({
     mutationFn: async () => {
-      return await apiRequest('POST', '/api/auth/logout', {});
+      const response = await apiRequest('POST', '/api/auth/logout', {});
+      const data = await response.json();
+      return data as {message: string};
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });

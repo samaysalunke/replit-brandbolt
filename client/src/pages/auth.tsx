@@ -7,8 +7,8 @@ export default function Auth() {
   const { login, isLoading } = useAuth();
   
   const handleLinkedInAuth = () => {
-    // Redirect to the LinkedIn OAuth endpoint
-    window.location.href = '/api/auth/linkedin';
+    // Redirect to the LinkedIn OAuth endpoint with return URL parameter
+    window.location.href = '/api/auth/linkedin?returnTo=/dashboard';
   };
   
   // For development testing, we can use the demo login
