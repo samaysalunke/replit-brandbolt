@@ -15,6 +15,7 @@ import {
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { isAuthenticated, fetchLinkedInProfileData } from './linkedin-auth';
+import './session-types';
 
 function generateMockProfileData(userId: number) {
   // This data would come from LinkedIn API in a real implementation
@@ -147,6 +148,8 @@ async function generateContentIdeas(userId: number) {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const SessionStore = MemoryStore(session);
+
+  // We're using session-types.ts to declare the returnTo property
 
   // Setup session
   app.use(

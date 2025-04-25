@@ -5,9 +5,23 @@ import axios from 'axios';
 import { Request, Response, NextFunction } from 'express';
 import { InsertUser, InsertProfile } from '@shared/schema';
 
-const CALLBACK_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://your-app-url.com/api/auth/linkedin/callback' 
-  : 'http://localhost:5000/api/auth/linkedin/callback';
+// Use the Replit domain for the callback URL
+const getCallbackUrl = () => {
+  // If REPL_SLUG and REPL_OWNER exist, construct the Replit URL
+  if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
+    return `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/auth/linkedin/callback`;
+  }
+  
+  // Fallback to localhost for local development
+  return 'http://localhost:5000/api/auth/linkedin/callback';
+};
+
+const CALLBACK_URL = getCallbackUrl();
+
+// Log the callback URL being used
+console.log('LinkedIn OAuth Callback URL:', CALLBACK_URL);
+console.log('LinkedIn Client ID:', process.env.LINKEDIN_CLIENT_ID?.substring(0, 6) + '...');
+console.log('LinkedIn Client Secret Length:', process.env.LINKEDIN_CLIENT_SECRET?.length);
 
 // Configure LinkedIn strategy
 passport.use(new LinkedInStrategy({
@@ -17,6 +31,7 @@ passport.use(new LinkedInStrategy({
   scope: ['r_emailaddress', 'r_liteprofile'],
   state: true
 }, async function(accessToken: string, refreshToken: string, profile: any, done: any) {
+  console.log('LinkedIn OAuth callback received. Profile ID:', profile?.id);
   try {
     // Check if user exists by LinkedIn ID
     let user = await storage.getUserByLinkedInId(profile.id);
