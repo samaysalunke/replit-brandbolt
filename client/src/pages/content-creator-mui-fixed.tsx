@@ -15,7 +15,7 @@ import {
 import { useContent } from '@/hooks/useContent';
 import { ContentFormMUI } from '@/components/content-creator/ContentFormMUI';
 import { ContentSuggestionsMUI } from '@/components/content-creator/ContentSuggestionsMUI';
-import CalendarPreviewMUI from '@/components/content-creator/CalendarPreviewMUI';
+import CalendarPreviewMUIFixed from '@/components/content-creator/CalendarPreviewMUIFixed';
 import { 
   Add as AddIcon, 
   Article as ArticleIcon, 
@@ -226,7 +226,7 @@ export default function ContentCreatorMUIFixed() {
                 subheader="Your scheduled posts and content plan"
               />
               <CardContent>
-                <CalendarPreviewMUI />
+                <CalendarPreviewMUIFixed />
               </CardContent>
             </Card>
             

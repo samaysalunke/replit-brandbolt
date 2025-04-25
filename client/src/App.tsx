@@ -8,6 +8,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import Dashboard from "@/pages/dashboard";
 import ContentCreator from "@/pages/content-creator";
 import ContentCreatorMUI from "@/pages/content-creator-mui";
+import ContentCreatorMUIFixed from "@/pages/content-creator-mui-fixed";
 import Calendar from "@/pages/calendar";
 import Analytics from "@/pages/analytics";
 import Settings from "@/pages/settings";
@@ -117,6 +118,13 @@ function App() {
           <AuthRoute component={() => (
             <MainLayout>
               <ContentCreatorMUI />
+            </MainLayout>
+          )} />
+        </Route>
+        <Route path="/content-creator-mui-fixed">
+          <AuthRoute component={() => (
+            <MainLayout>
+              <ContentCreatorMUIFixed />
             </MainLayout>
           )} />
         </Route>
