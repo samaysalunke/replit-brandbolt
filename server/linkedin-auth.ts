@@ -38,36 +38,65 @@ passport.use(new LinkedInStrategy({
   clientID: process.env.LINKEDIN_CLIENT_ID as string,
   clientSecret: process.env.LINKEDIN_CLIENT_SECRET as string,
   callbackURL: CALLBACK_URL,
-  // Update scopes to match what's approved in your LinkedIn developer portal
-  // Common approved scopes are: r_liteprofile, r_emailaddress, w_member_social
-  // If one scope fails, try with just the basic profile scope
-  scope: ['r_liteprofile'],
+  // Using OAuth2 scopes approved in your LinkedIn developer portal
+  scope: ['openid', 'profile', 'email', 'w_member_social'],
   state: true
 }, async function(accessToken: string, refreshToken: string, profile: any, done: any) {
-  console.log('LinkedIn OAuth callback received. Profile ID:', profile?.id);
+  console.log('LinkedIn OAuth callback received with OpenID Connect profile. Profile ID:', profile?.id || profile?.sub);
   try {
+    // With OpenID Connect, the user ID is in the 'sub' field
+    const linkedinId = profile.sub || profile.id;
+    
     // Check if user exists by LinkedIn ID
-    let user = await storage.getUserByLinkedInId(profile.id);
+    let user = await storage.getUserByLinkedInId(linkedinId);
     
     if (!user) {
       // If user doesn't exist, create a new user
-      const email = profile.emails && profile.emails.length > 0 
-        ? profile.emails[0].value 
-        : '';
-      const fullName = profile.displayName || `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`.trim();
+      
+      // Check if email is directly available in the OIDC profile
+      let email = '';
+      if (profile.email) {
+        // OpenID Connect format
+        email = profile.email;
+      } else if (profile.emails && profile.emails.length > 0) {
+        // Traditional format
+        email = profile.emails[0].value;
+      }
+      
+      // Get the full name from the profile
+      let fullName = '';
+      if (profile.name) {
+        // OpenID Connect format
+        fullName = profile.name;
+      } else {
+        // Traditional format
+        fullName = profile.displayName || `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`.trim();
+      }
+      
+      // Get the profile picture
+      let profileImage = '';
+      if (profile.picture) {
+        // OpenID Connect format
+        profileImage = profile.picture;
+      } else if (profile.photos && profile.photos.length > 0) {
+        // Traditional format
+        profileImage = profile.photos[0].value;
+      }
+      
+      console.log(`Creating new user from LinkedIn profile: ID=${linkedinId}, Name=${fullName}, Email=${email ? 'Available' : 'Not provided'}`);
       
       // Create user data object compliant with our schema
       const userData: InsertUser = {
-        username: profile.id, // Use LinkedIn ID as username
+        username: linkedinId, // Use LinkedIn ID as username
         password: '', // No password needed for OAuth users
         email: email,
         fullName: fullName,
-        linkedinId: profile.id,
+        linkedinId,
         accessToken,
         refreshToken: refreshToken || '',
         isConnected: true,
-        profileImage: profile.photos && profile.photos.length > 0 ? profile.photos[0].value : '',
-        headline: profile._json?.headline || ''
+        profileImage,
+        headline: profile.headline || profile._json?.headline || ''
       };
       
       user = await storage.createUser(userData);
@@ -109,58 +138,51 @@ passport.use(new LinkedInStrategy({
 // Helper function to fetch more profile data using LinkedIn's API
 export async function fetchLinkedInProfileData(accessToken: string) {
   try {
-    // Fetch basic profile data
-    const profileResponse = await axios.get('https://api.linkedin.com/v2/me', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'cache-control': 'no-cache',
-        'X-Restli-Protocol-Version': '2.0.0'
-      }
-    });
-
-    // Fetch email address
-    const emailResponse = await axios.get('https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'cache-control': 'no-cache',
-        'X-Restli-Protocol-Version': '2.0.0'
-      }
-    });
-
-    // Fetch profile picture
-    const pictureResponse = await axios.get('https://api.linkedin.com/v2/me?projection=(id,profilePicture(displayImage~:playableStreams))', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'cache-control': 'no-cache',
-        'X-Restli-Protocol-Version': '2.0.0'
-      }
-    });
-
-    // Process and return combined data
-    const profileData = profileResponse.data;
-    const email = emailResponse.data.elements?.[0]?.['handle~']?.emailAddress || null;
+    console.log('Fetching LinkedIn profile data with token');
     
-    let profilePicture = null;
-    if (pictureResponse.data.profilePicture && 
-        pictureResponse.data.profilePicture['displayImage~'] && 
-        pictureResponse.data.profilePicture['displayImage~'].elements) {
-      // Get the highest resolution image
-      const elements = pictureResponse.data.profilePicture['displayImage~'].elements;
-      if (elements.length > 0) {
-        // Sort by width (descending) and get the first one
-        const sorted = [...elements].sort((a, b) => b.data['com.linkedin.digitalmedia.mediaartifact.StillImage'].storageSize.width - 
-                                                    a.data['com.linkedin.digitalmedia.mediaartifact.StillImage'].storageSize.width);
-        profilePicture = sorted[0]?.identifiers?.[0]?.identifier;
+    // Fetch OpenID Connect user info (works with the 'openid' and 'profile' scopes)
+    const userInfoResponse = await axios.get('https://api.linkedin.com/v2/userinfo', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'cache-control': 'no-cache'
+      }
+    });
+    
+    console.log('Received response from LinkedIn userinfo endpoint');
+    
+    // With the openid and profile scopes, we should have access to basic profile info
+    const userData = userInfoResponse.data;
+    
+    // The email should be available directly from the userinfo endpoint if 'email' scope is granted
+    const email = userData.email || null;
+    
+    // The picture should also be available from the userinfo endpoint
+    const profilePicture = userData.picture || null;
+    
+    // Extract user name from the token response
+    let firstName = '';
+    let lastName = '';
+    
+    if (userData.name) {
+      const nameParts = userData.name.split(' ');
+      if (nameParts.length >= 2) {
+        firstName = nameParts[0];
+        lastName = nameParts.slice(1).join(' ');
+      } else {
+        firstName = userData.name;
       }
     }
-
+    
+    // Enhanced logging for debugging
+    console.log(`LinkedIn profile data fetched: ID=${userData.sub}, Name=${userData.name}`);
+    
     return {
-      id: profileData.id,
-      firstName: profileData.localizedFirstName,
-      lastName: profileData.localizedLastName,
+      id: userData.sub,
+      firstName,
+      lastName,
       email,
       profilePicture,
-      headline: profileData.headline || null,
+      headline: userData.headline || null,
     };
   } catch (error) {
     console.error('Error fetching LinkedIn profile data:', error);
