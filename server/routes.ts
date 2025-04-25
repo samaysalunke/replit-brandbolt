@@ -5,6 +5,7 @@ import MemoryStore from "memorystore";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { storage } from "./storage";
+import * as crypto from 'crypto';
 import { 
   insertUserSchema, 
   insertProfileSchema, 
@@ -16,6 +17,9 @@ import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { isAuthenticated, fetchLinkedInProfileData } from './linkedin-auth';
 import './session-types';
+
+// Fix for TypeScript not recognizing express-session properly
+const expressSession = session as any;
 
 function generateMockProfileData(userId: number) {
   // This data would come from LinkedIn API in a real implementation
@@ -153,27 +157,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Generate a random session secret if one is not provided
   const sessionSecret = process.env.SESSION_SECRET || 
-    require('crypto').randomBytes(32).toString('hex');
+    crypto.randomBytes(32).toString('hex');
   
   // Log session configuration (without exposing the actual secret)
   console.log(`Session configuration: Using ${process.env.SESSION_SECRET ? 'provided' : 'generated'} secret`);
   console.log(`Session cookie secure: ${process.env.NODE_ENV === "production"}`);
   
-  // Setup session middleware with type assertion to solve TypeScript issue
-  app.use(
-    (session as any)({
-      secret: sessionSecret,
-      resave: false,
-      saveUninitialized: false,
-      cookie: { 
-        secure: process.env.NODE_ENV === "production", 
-        maxAge: 86400000 // 1 day
-      },
-      store: new SessionStore({
-        checkPeriod: 86400000, // 24 hours
-      }),
+  // Setup session middleware with proper type casting
+  const sessionConfig = {
+    secret: sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+      secure: process.env.NODE_ENV === "production", 
+      maxAge: 86400000, // 1 day
+      sameSite: 'lax' as 'lax' // Helps with CSRF protection
+    },
+    store: new SessionStore({
+      checkPeriod: 86400000, // 24 hours
     })
-  );
+  };
+  
+  app.use(session(sessionConfig));
 
   // Setup passport
   app.use(passport.initialize());
