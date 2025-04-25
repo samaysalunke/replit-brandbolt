@@ -1,160 +1,246 @@
-import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ContentForm } from '@/components/content-creator/ContentForm';
-import CalendarPreview from '@/components/content-creator/CalendarPreview';
-import { ContentSuggestions } from '@/components/content-creator/ContentSuggestions';
+import React, { useState } from 'react';
+import { 
+  Box, 
+  Container,
+  Stack, 
+  Typography, 
+  Card, 
+  CardContent, 
+  CardHeader,
+  Tabs,
+  Tab,
+  Paper,
+  Divider
+} from '@mui/material';
 import { useContent } from '@/hooks/useContent';
-import { CalendarIcon, PlusCircle, Clock, AlignLeft } from 'lucide-react';
+import { ContentFormMUI } from '@/components/content-creator/ContentFormMUI';
+import { ContentSuggestionsMUI } from '@/components/content-creator/ContentSuggestionsMUI';
+import CalendarPreviewMUIFixed from '@/components/content-creator/CalendarPreviewMUIFixed';
+import { 
+  Add as AddIcon, 
+  Article as ArticleIcon, 
+  Schedule as ScheduleIcon,
+  CalendarMonth as CalendarIcon
+} from '@mui/icons-material';
 
-export default function ContentCreator() {
-  const { getDraftPosts, getScheduledPosts, getPublishedPosts } = useContent();
-  const [activeTab, setActiveTab] = useState<string>('create');
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold">Content Creator</h1>
-        <p className="text-muted-foreground">Create and optimize LinkedIn posts with AI assistance</p>
-      </header>
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`content-creator-tabpanel-${index}`}
+      aria-labelledby={`content-creator-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ py: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
+
+export default function ContentCreator() {
+  const { getDraftPosts, getScheduledPosts } = useContent();
+  const [tabValue, setTabValue] = useState(0);
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
+
+  const formatPreviewText = (text: string, maxLength = 80) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
+  return (
+    <Container maxWidth="xl" sx={{ py: 3 }}>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Content Creator
+        </Typography>
+        <Typography variant="subtitle1" color="text.secondary">
+          Create and optimize LinkedIn posts with AI assistance
+        </Typography>
+      </Box>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <Box sx={{ display: 'flex', flexDirection: {xs: 'column', md: 'row'}, gap: 3 }}>
         {/* Main Content Area */}
-        <div className="lg:col-span-2">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-3 mb-4">
-              <TabsTrigger value="create" className="flex items-center gap-2">
-                <PlusCircle className="h-4 w-4" />
-                Create
-              </TabsTrigger>
-              <TabsTrigger value="drafts" className="flex items-center gap-2">
-                <AlignLeft className="h-4 w-4" />
-                Drafts ({getDraftPosts().length})
-              </TabsTrigger>
-              <TabsTrigger value="scheduled" className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Scheduled ({getScheduledPosts().length})
-              </TabsTrigger>
-            </TabsList>
+        <Box sx={{ flexGrow: 1, width: {xs: '100%', md: '70%'} }}>
+          <Paper elevation={0} variant="outlined">
+            <Tabs 
+              value={tabValue} 
+              onChange={handleTabChange} 
+              aria-label="content creator tabs"
+              sx={{ 
+                borderBottom: 1, 
+                borderColor: 'divider',
+                px: 2
+              }}
+            >
+              <Tab icon={<AddIcon />} label="Create" iconPosition="start" />
+              <Tab 
+                icon={<ArticleIcon />} 
+                label={`Drafts (${getDraftPosts().length})`} 
+                iconPosition="start"
+              />
+              <Tab 
+                icon={<ScheduleIcon />} 
+                label={`Scheduled (${getScheduledPosts().length})`} 
+                iconPosition="start"
+              />
+            </Tabs>
             
-            <TabsContent value="create">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Create LinkedIn Post</CardTitle>
-                  <CardDescription>
-                    Craft a new post with AI-powered optimization for maximum engagement
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ContentForm />
-                </CardContent>
-              </Card>
-            </TabsContent>
+            <TabPanel value={tabValue} index={0}>
+              <Box sx={{ px: 2 }}>
+                <Card variant="outlined">
+                  <CardHeader 
+                    title="Create LinkedIn Post"
+                    subheader="Craft a new post with AI-powered optimization for maximum engagement"
+                  />
+                  <CardContent>
+                    <ContentFormMUI />
+                  </CardContent>
+                </Card>
+              </Box>
+            </TabPanel>
             
-            <TabsContent value="drafts">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Draft Posts</CardTitle>
-                  <CardDescription>
-                    Your saved drafts that are ready to be published
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {getDraftPosts().length > 0 ? (
-                    <div className="space-y-4">
-                      {getDraftPosts().map(post => (
-                        <div 
-                          key={post.id} 
-                          className="p-4 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors"
-                        >
-                          <p className="font-medium truncate">{post.content.substring(0, 80)}...</p>
-                          <div className="flex items-center text-xs text-muted-foreground mt-2">
-                            <AlignLeft className="h-3 w-3 mr-1" />
-                            <span>Draft • </span>
-                            <span className="ml-1">{new Date(post.createdAt).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <AlignLeft className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                      <p>No draft posts yet</p>
-                      <p className="text-sm">Create a post and save it as a draft to see it here</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+            <TabPanel value={tabValue} index={1}>
+              <Box sx={{ px: 2 }}>
+                <Card variant="outlined">
+                  <CardHeader 
+                    title="Draft Posts"
+                    subheader="Your saved drafts that are ready to be published"
+                  />
+                  <CardContent>
+                    {getDraftPosts().length > 0 ? (
+                      <Stack spacing={2}>
+                        {getDraftPosts().map(post => (
+                          <Paper 
+                            key={post.id} 
+                            variant="outlined" 
+                            sx={{ 
+                              p: 2, 
+                              cursor: 'pointer',
+                              '&:hover': { bgcolor: 'action.hover' }
+                            }}
+                          >
+                            <Typography variant="body1" fontWeight="medium" gutterBottom>
+                              {formatPreviewText(post.content)}
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <ArticleIcon fontSize="small" color="action" />
+                              <Typography variant="caption" color="text.secondary">
+                                Draft • {new Date(post.createdAt).toLocaleDateString()}
+                              </Typography>
+                            </Box>
+                          </Paper>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Box sx={{ textAlign: 'center', py: 4 }}>
+                        <ArticleIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+                        <Typography color="text.secondary" gutterBottom>
+                          No draft posts yet
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Create a post and save it as a draft to see it here
+                        </Typography>
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              </Box>
+            </TabPanel>
             
-            <TabsContent value="scheduled">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Scheduled Posts</CardTitle>
-                  <CardDescription>
-                    Posts scheduled to be published at a future date
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {getScheduledPosts().length > 0 ? (
-                    <div className="space-y-4">
-                      {getScheduledPosts().map(post => (
-                        <div 
-                          key={post.id} 
-                          className="p-4 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors"
-                        >
-                          <p className="font-medium truncate">{post.content.substring(0, 80)}...</p>
-                          <div className="flex items-center text-xs text-muted-foreground mt-2">
-                            <Clock className="h-3 w-3 mr-1" />
-                            <span>Scheduled for • </span>
-                            <span className="ml-1">{post.scheduledFor && new Date(post.scheduledFor).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Clock className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                      <p>No scheduled posts yet</p>
-                      <p className="text-sm">Schedule a post to see it here</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
+            <TabPanel value={tabValue} index={2}>
+              <Box sx={{ px: 2 }}>
+                <Card variant="outlined">
+                  <CardHeader 
+                    title="Scheduled Posts"
+                    subheader="Posts scheduled to be published at a future date"
+                  />
+                  <CardContent>
+                    {getScheduledPosts().length > 0 ? (
+                      <Stack spacing={2}>
+                        {getScheduledPosts().map(post => (
+                          <Paper 
+                            key={post.id} 
+                            variant="outlined" 
+                            sx={{ 
+                              p: 2, 
+                              cursor: 'pointer',
+                              '&:hover': { bgcolor: 'action.hover' }
+                            }}
+                          >
+                            <Typography variant="body1" fontWeight="medium" gutterBottom>
+                              {formatPreviewText(post.content)}
+                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <ScheduleIcon fontSize="small" color="action" />
+                              <Typography variant="caption" color="text.secondary">
+                                Scheduled for • {post.scheduledFor && new Date(post.scheduledFor).toLocaleDateString()}
+                              </Typography>
+                            </Box>
+                          </Paper>
+                        ))}
+                      </Stack>
+                    ) : (
+                      <Box sx={{ textAlign: 'center', py: 4 }}>
+                        <ScheduleIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+                        <Typography color="text.secondary" gutterBottom>
+                          No scheduled posts yet
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Schedule a post to see it here
+                        </Typography>
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              </Box>
+            </TabPanel>
+          </Paper>
+        </Box>
         
         {/* Sidebar */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <CalendarIcon className="h-5 w-5 mr-2" />
-                Content Calendar
-              </CardTitle>
-              <CardDescription>
-                Your scheduled posts and content plan
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <CalendarPreview />
-            </CardContent>
-          </Card>
-          
-          {/* Added Content Suggestions section */}
-          {activeTab === 'create' && (
-            <div className="mt-6">
-              <ContentSuggestions 
+        <Box sx={{ width: {xs: '100%', md: '30%'} }}>
+          <Stack spacing={3}>
+            <Card variant="outlined">
+              <CardHeader 
+                title={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CalendarIcon color="primary" />
+                    <Typography variant="h6">Content Calendar</Typography>
+                  </Box>
+                }
+                subheader="Your scheduled posts and content plan"
+              />
+              <CardContent>
+                <CalendarPreviewMUIFixed />
+              </CardContent>
+            </Card>
+            
+            {tabValue === 0 && (
+              <ContentSuggestionsMUI
                 onUseSuggestion={(content) => {
-                  // We'll implement this functionality later to auto-fill the content form
+                  // We'll implement this functionality later
                   console.log("Using suggestion:", content);
                 }}
               />
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+            )}
+          </Stack>
+        </Box>
+      </Box>
+    </Container>
   );
 }

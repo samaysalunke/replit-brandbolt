@@ -63,7 +63,6 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const navLinks = [
     { path: '/', label: 'Dashboard', icon: <HomeIcon className="w-5 h-5" /> },
     { path: '/content-creator', label: 'Content Creator', icon: <PenIcon className="w-5 h-5" /> },
-    { path: '/content-creator-mui-updated', label: 'Content Creator (MUI)', icon: <PenIcon className="w-5 h-5" /> },
     { path: '/calendar', label: 'Calendar', icon: <CalendarIcon className="w-5 h-5" /> },
     { path: '/analytics', label: 'Analytics', icon: <BarChartIcon className="w-5 h-5" /> },
     { path: '/settings', label: 'Settings', icon: <SettingsIcon className="w-5 h-5" /> },
