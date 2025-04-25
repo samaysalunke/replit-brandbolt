@@ -147,7 +147,9 @@ async function generateContentIdeas(userId: number) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  const SessionStore = MemoryStore(session);
+  // Create the session store
+  const memoryStore = MemoryStore as any;
+  const SessionStore = memoryStore(session);
 
   // We're using session-types.ts to declare the returnTo property
 

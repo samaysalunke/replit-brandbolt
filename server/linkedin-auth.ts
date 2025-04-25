@@ -7,8 +7,10 @@ import { InsertUser, InsertProfile } from '@shared/schema';
 
 // Use the Replit domain for the callback URL
 const getCallbackUrl = () => {
-  // If REPL_SLUG and REPL_OWNER exist, construct the Replit URL
+  // Prefer using the actual domain when deployed
   if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
+    // Log the Replit domain being used
+    console.log(`Using Replit domain for callback: ${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
     return `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/auth/linkedin/callback`;
   }
   
@@ -16,6 +18,7 @@ const getCallbackUrl = () => {
   return 'http://localhost:5000/api/auth/linkedin/callback';
 };
 
+// Get and log the callback URL
 const CALLBACK_URL = getCallbackUrl();
 
 // Log the callback URL being used
