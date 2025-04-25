@@ -2,5 +2,8 @@
 declare module 'express-session' {
   interface SessionData {
     returnTo?: string;
+    passport?: {
+      user?: number | object;
+    };
   }
 }

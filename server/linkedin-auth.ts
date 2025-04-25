@@ -7,14 +7,27 @@ import { InsertUser, InsertProfile } from '@shared/schema';
 
 // Use the Replit domain for the callback URL
 const getCallbackUrl = () => {
-  // Prefer using the actual domain when deployed
+  // Check for REPLIT_DOMAINS environment variable which contains the app URL on Replit
+  if (process.env.REPLIT_DOMAINS) {
+    try {
+      // The domain appears to be a plain string, not JSON
+      const domain = process.env.REPLIT_DOMAINS;
+      console.log(`Using Replit domain for callback: ${domain}`);
+      return `https://${domain}/api/auth/linkedin/callback`;
+    } catch (error) {
+      console.error('Error parsing REPLIT_DOMAINS:', error);
+    }
+  }
+  
+  // Alternative: use slug and owner as fallback
   if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
-    // Log the Replit domain being used
-    console.log(`Using Replit domain for callback: ${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
-    return `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/auth/linkedin/callback`;
+    const domain = `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`;
+    console.log(`Using Replit domain (fallback) for callback: ${domain}`);
+    return `https://${domain}/api/auth/linkedin/callback`;
   }
   
   // Fallback to localhost for local development
+  console.log("Using localhost for callback - no Replit domain detected");
   return 'http://localhost:5000/api/auth/linkedin/callback';
 };
 

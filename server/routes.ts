@@ -151,10 +151,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const MemStoreFactory = MemoryStore as any;
   const SessionStore = MemStoreFactory(session);
 
-  // Setup session middleware
+  // Generate a random session secret if one is not provided
+  const sessionSecret = process.env.SESSION_SECRET || 
+    require('crypto').randomBytes(32).toString('hex');
+  
+  // Log session configuration (without exposing the actual secret)
+  console.log(`Session configuration: Using ${process.env.SESSION_SECRET ? 'provided' : 'generated'} secret`);
+  console.log(`Session cookie secure: ${process.env.NODE_ENV === "production"}`);
+  
+  // Setup session middleware with type assertion to solve TypeScript issue
   app.use(
-    session({
-      secret: process.env.SESSION_SECRET || "brandbolt-secret",
+    (session as any)({
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       cookie: { 
@@ -171,13 +179,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  passport.serializeUser((user: Express.User, done) => {
-    done(null, user);
-  });
-
-  passport.deserializeUser((user: Express.User, done) => {
-    done(null, user);
-  });
+  // Remove the duplicate serialization code since it's already defined in linkedin-auth.ts
+  // This was causing conflicts in the session handling
 
   // Local Auth Strategy for development (would be LinkedIn OAuth in production)
   passport.use(
@@ -199,13 +202,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })
   );
 
-  // Auth middleware
-  const isAuthenticated = (req: Request, res: Response, next: Function) => {
-    if (req.isAuthenticated()) {
-      return next();
-    }
-    res.status(401).json({ message: "Unauthorized" });
-  };
+  // Auth middleware is imported from linkedin-auth.ts
+  // Using the imported version to ensure consistency
 
   // === AUTH ROUTES ===
   
@@ -235,8 +233,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/linkedin', (req, res, next) => {
     // Store the return URL in the session if it's provided
     if (req.query.returnTo) {
-      req.session.returnTo = req.query.returnTo as string;
+      // Use type assertion to handle session property access
+      (req.session as any).returnTo = req.query.returnTo as string;
     }
+    
+    // Log the OAuth flow start
+    console.log('Starting LinkedIn OAuth flow', 
+      req.query.returnTo ? `with returnTo: ${req.query.returnTo}` : 'without returnTo');
     
     passport.authenticate('linkedin')(req, res, next);
   });
@@ -249,8 +252,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }),
     (req, res) => {
       // Determine where to redirect after successful login
-      const returnTo = req.session.returnTo || '/dashboard';
-      delete req.session.returnTo;
+      // Use type assertion to handle session property access
+      const sessionData = req.session as any;
+      const returnTo = sessionData.returnTo || '/dashboard';
+      delete sessionData.returnTo;
+      
+      // Log the successful authentication and redirect
+      console.log(`LinkedIn auth successful, user: ${JSON.stringify(req.user)}`);
+      console.log(`Redirecting to: ${returnTo}`);
       
       // Successful authentication, redirect to the specified page
       res.redirect(returnTo);
