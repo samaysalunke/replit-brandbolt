@@ -8,20 +8,22 @@ import { InsertUser, InsertProfile } from '@shared/schema';
 // We need to ensure our callback URL matches exactly what's registered in LinkedIn Developer Portal
 const getCallbackUrl = () => {
   // Important: The callback URL must match what's registered in LinkedIn developer console
-  // If we're getting "redirect_uri doesn't match registered value" errors,
-  // it means this URL doesn't match what's in the LinkedIn developer settings
+  // Check for environment variable first (allows for easy configuration)
+  if (process.env.LINKEDIN_CALLBACK_URL) {
+    console.log(`Using environment-defined callback URL: ${process.env.LINKEDIN_CALLBACK_URL}`);
+    return process.env.LINKEDIN_CALLBACK_URL;
+  }
   
-  // Since we're getting redirect_uri mismatch errors, we'll try a simpler approach with
-  // a fixed callback that should match what's registered in LinkedIn
+  // We're now registering multiple callback paths to handle various URL formats
+  // This uses the shorter path which works better with OAuth providers
+  // The route handler needs to be registered at both paths:
+  // - /auth/linkedin/callback (this one)
+  // - /api/auth/linkedin/callback (for backward compatibility)
   
-  // This approach requires registering this exact URL in LinkedIn Developer Portal:
-  // https://linkedin-growth-coach.replit.app/api/auth/linkedin/callback
+  // Using the simpler callback format which is more reliable across environments
+  const FIXED_CALLBACK_URL = '/auth/linkedin/callback';
   
-  // Note: If you're still getting redirect_uri errors, you'll need to update the
-  // registered callback URL in the LinkedIn Developer Portal to match this URL:
-  const FIXED_CALLBACK_URL = 'https://linkedin-growth-coach.replit.app/api/auth/linkedin/callback';
-  
-  console.log(`Using fixed callback URL: ${FIXED_CALLBACK_URL}`);
+  console.log(`Using simplified callback URL path: ${FIXED_CALLBACK_URL}`);
   return FIXED_CALLBACK_URL;
 };
 

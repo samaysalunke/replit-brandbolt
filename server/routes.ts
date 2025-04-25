@@ -249,30 +249,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     passport.authenticate('linkedin')(req, res, next);
   });
   
-  // LinkedIn OAuth callback
+  // LinkedIn OAuth callback - register both callback URLs to handle both local and deployed environments
+  const callbackHandler = (req: Request, res: Response) => {
+    // Log the successful authentication
+    console.log(`LinkedIn auth successful, user ID: ${(req.user as any)?.id}`);
+    
+    // Determine where to redirect after successful login
+    let returnTo = '/dashboard'; // Default redirect location
+    
+    // Check for returnTo in session
+    if (req.session && (req.session as any).returnTo) {
+      returnTo = (req.session as any).returnTo;
+      delete (req.session as any).returnTo;
+    }
+    
+    console.log(`Redirecting to: ${returnTo}`);
+    
+    // Successful authentication, redirect to the specified page
+    res.redirect(returnTo);
+  };
+  
+  // Register the callback URL for the LinkedIn OAuth flow - two routes to handle both local and deployed environments
   app.get('/api/auth/linkedin/callback', 
     passport.authenticate('linkedin', { 
       failureRedirect: '/auth',
       failureMessage: true
     }),
-    (req, res) => {
-      // Log the successful authentication
-      console.log(`LinkedIn auth successful, user ID: ${(req.user as any)?.id}`);
-      
-      // Determine where to redirect after successful login
-      let returnTo = '/dashboard'; // Default redirect location
-      
-      // Check for returnTo in session
-      if (req.session && (req.session as any).returnTo) {
-        returnTo = (req.session as any).returnTo;
-        delete (req.session as any).returnTo;
-      }
-      
-      console.log(`Redirecting to: ${returnTo}`);
-      
-      // Successful authentication, redirect to the specified page
-      res.redirect(returnTo);
-    }
+    callbackHandler
+  );
+  
+  // Also register at the root level for absolute URLs (needed for some environments)
+  app.get('/auth/linkedin/callback', 
+    passport.authenticate('linkedin', { 
+      failureRedirect: '/auth',
+      failureMessage: true
+    }),
+    callbackHandler
   );
   
   // Get profile data from LinkedIn
