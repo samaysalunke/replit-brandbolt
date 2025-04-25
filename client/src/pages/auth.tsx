@@ -7,9 +7,8 @@ export default function Auth() {
   const { login, isLoading } = useAuth();
   
   const handleLinkedInAuth = () => {
-    // This would trigger the OAuth flow in a real implementation
-    // For demo purposes, we'll just log in as the demo user
-    login({ username: 'demo', password: 'password' });
+    // Redirect to the LinkedIn OAuth endpoint
+    window.location.href = '/api/auth/linkedin';
   };
   
   // For development testing, we can use the demo login

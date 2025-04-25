@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
@@ -100,10 +100,27 @@ export function useAuth() {
     logoutMutation.mutate();
   };
   
+  // Get current user
+  const { data: currentUser, isLoading: isUserLoading } = useQuery({
+    queryKey: ['/api/auth/user'],
+    enabled: true,
+    retry: false,
+  });
+
+  // Fetch LinkedIn profile data
+  const linkedinProfileQuery = useQuery({
+    queryKey: ['/api/auth/linkedin/profile'],
+    enabled: !!currentUser?.user?.isConnected && !!currentUser?.user?.accessToken,
+    refetchOnWindowFocus: false,
+  });
+
   return {
     login,
     register,
     logout,
-    isLoading: isLoading && (loginMutation.isPending || registerMutation.isPending || logoutMutation.isPending)
+    currentUser: currentUser?.user, 
+    isAuthenticated: !!currentUser?.user,
+    linkedinProfile: linkedinProfileQuery.data,
+    isLoading: isLoading && (loginMutation.isPending || registerMutation.isPending || logoutMutation.isPending || isUserLoading || linkedinProfileQuery.isLoading)
   };
 }
