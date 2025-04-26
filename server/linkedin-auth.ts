@@ -8,15 +8,9 @@ import { InsertUser, InsertProfile } from '@shared/schema';
 // We need to ensure our callback URL matches exactly what's registered in LinkedIn Developer Portal
 const getCallbackUrl = () => {
   // The callback URL *MUST* match exactly what's registered in LinkedIn developer console
-  // Otherwise, we'll get the "redirect_uri does not match the registered value" error
-
-  // Based on current behavior in the Replit environment, it seems LinkedIn might be routing
-  // to /callback instead of the full path we registered
+  const CALLBACK_URL = 'https://linkedin-growth-coach.replit.app/api/auth/linkedin/callback';
   
-  // Let's use a relative URL that should work regardless of the domain
-  const CALLBACK_URL = '/callback';
-  
-  console.log(`Using simpler callback URL path: ${CALLBACK_URL}`);
+  console.log(`Using LinkedIn callback URL: ${CALLBACK_URL}`);
   return CALLBACK_URL;
 };
 
