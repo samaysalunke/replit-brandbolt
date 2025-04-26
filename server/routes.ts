@@ -237,16 +237,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Start LinkedIn OAuth flow
   app.get('/api/auth/linkedin', (req, res, next) => {
     // Store the return URL in the session if it's provided
-    if (req.query.returnTo) {
-      // Use type assertion to handle session property access
-      (req.session as any).returnTo = req.query.returnTo as string;
-    }
+    const returnTo = (req.query.returnTo as string) || '/dashboard';
+    // Use type assertion to handle session property access
+    (req.session as any).returnTo = returnTo;
     
     // Log the OAuth flow start
-    console.log('Starting LinkedIn OAuth flow', 
-      req.query.returnTo ? `with returnTo: ${req.query.returnTo}` : 'without returnTo');
+    console.log(`Starting LinkedIn OAuth flow with returnTo: ${returnTo}`);
     
-    passport.authenticate('linkedin')(req, res, next);
+    // Use a custom state parameter to help identify our callback 
+    const authOptions = {
+      state: `${Math.random().toString(36).substring(2, 15)}:${returnTo}`,
+      scope: ['openid', 'profile', 'email', 'w_member_social']
+    };
+    
+    console.log('LinkedIn auth options:', authOptions);
+    passport.authenticate('linkedin', authOptions)(req, res, next);
   });
   
   // LinkedIn OAuth callback - register both callback URLs to handle both local and deployed environments
@@ -328,10 +333,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   });
   
+  // Add explicit route for /callback path
+  app.get('/callback', (req, res, next) => {
+    console.log('=== /callback PATH DETECTED ===');
+    console.log(`Request URL: ${req.originalUrl}`);
+    console.log('Query params:', req.query);
+    
+    // If this is a LinkedIn OAuth callback redirected to /callback
+    if (req.query.code && req.query.state) {
+      console.log('LinkedIn OAuth code detected in /callback route, handling with auth middleware');
+      return linkedInAuthMiddleware(req, res, next);
+    }
+    
+    next();
+  });
+  
   // Create a catch-all handler for LinkedIn callback to capture any callback format
   // This must be registered AFTER the more specific routes
   app.use((req, res, next) => {
-    if (req.path.includes('linkedin/callback') || 
+    if (req.path.includes('linkedin/callback') || req.path.includes('/callback') ||
         (req.query.code && req.query.state && typeof req.query.code === 'string' && req.query.code.startsWith('AQ'))) {
       console.log('=== CATCH-ALL LINKEDIN CALLBACK RECEIVED ===');
       console.log(`Request URL: ${req.originalUrl}`);
