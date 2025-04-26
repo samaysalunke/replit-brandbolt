@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkedIn Authentication App</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background-color: #f5f5f5;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 4rem 0;
+      background: linear-gradient(135deg, #0077b5, #0e76a8);
+      color: white;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+    }
+    
+    .hero h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .hero p {
+      font-size: 1.2rem;
+      max-width: 600px;
+      margin-bottom: 2rem;
+    }
+    
+    .btn {
+      display: inline-block;
+      background-color: white;
+      color: #0077b5;
+      padding: 0.8rem 1.5rem;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+    
+    .btn:hover {
+      background-color: #f0f0f0;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin-bottom: 3rem;
+    }
+    
+    .feature-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 2rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .feature-card h3 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      color: #0077b5;
+    }
+    
+    footer {
+      text-align: center;
+      padding: 2rem 0;
+      color: #666;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <h1>LinkedIn Profile Viewer</h1>
+      <p>Connect with LinkedIn to securely access and manage your professional profile information</p>
+      <a href="/api/auth/linkedin" class="btn">Connect with LinkedIn</a>
+    </div>
+    
+    <div class="features">
+      <div class="feature-card">
+        <h3>Secure Authentication</h3>
+        <p>Our application uses OAuth 2.0 to securely connect to your LinkedIn account without ever storing your password.</p>
+      </div>
+      
+      <div class="feature-card">
+        <h3>Profile Management</h3>
+        <p>View and manage your LinkedIn profile information in a clean, organized interface.</p>
+      </div>
+      
+      <div class="feature-card">
+        <h3>Data Privacy</h3>
+        <p>Your data is secure and only used within this application. We don't share your information with third parties.</p>
+      </div>
+    </div>
+    
+    <footer>
+      <p>&copy; 2023 LinkedIn Profile Viewer. All rights reserved.</p>
+    </footer>
+  </div>
+</body>
+</html>
