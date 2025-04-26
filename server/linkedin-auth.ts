@@ -5,101 +5,64 @@ import axios from 'axios';
 import { Request, Response, NextFunction } from 'express';
 import { InsertUser, InsertProfile } from '@shared/schema';
 
-// We need to ensure our callback URL matches exactly what's registered in LinkedIn Developer Portal
-const getCallbackUrl = () => {
-  // The callback URL *MUST* match exactly what's registered in LinkedIn developer console
-  // Otherwise, we'll get the "redirect_uri does not match the registered value" error
+/**
+ * Simplified LinkedIn Authentication Module
+ * Following a clean and simple approach to LinkedIn authentication
+ */
 
-  // Based on the redirect URL in your LinkedIn developer console, it looks like this is the URL
-  // LinkedIn is redirecting to:
-  const CALLBACK_URL = 'https://linkedin-growth-coach.replit.app/api/auth/linkedin/callback';
-  
-  console.log(`Using exact registered callback URL: ${CALLBACK_URL}`);
-  return CALLBACK_URL;
-};
+// Set up the callback URL - this must match exactly what's in your LinkedIn Developer Console
+const CALLBACK_URL = 'https://linkedin-growth-coach.replit.app/api/auth/linkedin/callback';
 
-// Get and log the callback URL
-const CALLBACK_URL = getCallbackUrl();
-
-// Log the callback URL being used
+// Log configuration info to make debugging easier
 console.log('LinkedIn OAuth Callback URL:', CALLBACK_URL);
 console.log('LinkedIn Client ID:', process.env.LINKEDIN_CLIENT_ID?.substring(0, 6) + '...');
-console.log('LinkedIn Client Secret Length:', process.env.LINKEDIN_CLIENT_SECRET?.length);
+console.log('LinkedIn Client Secret available:', !!process.env.LINKEDIN_CLIENT_SECRET);
 
-// Configure LinkedIn strategy
+// Configure LinkedIn OAuth Strategy
 passport.use(new LinkedInStrategy({
   clientID: process.env.LINKEDIN_CLIENT_ID as string,
   clientSecret: process.env.LINKEDIN_CLIENT_SECRET as string,
   callbackURL: CALLBACK_URL,
-  // Using OAuth2 scopes approved in your LinkedIn developer portal
-  scope: ['openid', 'profile', 'email', 'w_member_social'],
+  scope: ['openid', 'profile', 'email', 'w_member_social'], // Approved LinkedIn scopes
   state: true
-}, async function(accessToken: string, refreshToken: string, profile: any, done: any) {
-  console.log('=== LINKEDIN OAUTH STRATEGY CALLBACK ===');
-  console.log('Profile data received from LinkedIn:');
-  console.log(JSON.stringify(profile, null, 2));
-  console.log('Access token received (first 10 chars):', accessToken.substring(0, 10) + '...');
-  console.log('Refresh token present:', !!refreshToken);
-  
+}, async (accessToken, refreshToken, profile, done) => {
   try {
-    // With OpenID Connect, the user ID is in the 'sub' field
+    console.log('LinkedIn auth successful, processing user data');
+    
+    // Get LinkedIn user ID - handle both OpenID Connect and standard OAuth formats
     const linkedinId = profile.sub || profile.id;
     
-    // Check if user exists by LinkedIn ID
+    // Check if user already exists in our database
     let user = await storage.getUserByLinkedInId(linkedinId);
     
+    // Extract basic profile info
+    const email = profile.email || (profile.emails?.[0]?.value || '');
+    const fullName = profile.name || profile.displayName || 
+                    `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`.trim();
+    const profileImage = profile.picture || (profile.photos?.[0]?.value || '');
+    const headline = profile.headline || profile._json?.headline || '';
+    
     if (!user) {
-      // If user doesn't exist, create a new user
+      // Create new user record if this is first login
+      console.log(`Creating new user from LinkedIn: ${fullName}`);
       
-      // Check if email is directly available in the OIDC profile
-      let email = '';
-      if (profile.email) {
-        // OpenID Connect format
-        email = profile.email;
-      } else if (profile.emails && profile.emails.length > 0) {
-        // Traditional format
-        email = profile.emails[0].value;
-      }
-      
-      // Get the full name from the profile
-      let fullName = '';
-      if (profile.name) {
-        // OpenID Connect format
-        fullName = profile.name;
-      } else {
-        // Traditional format
-        fullName = profile.displayName || `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`.trim();
-      }
-      
-      // Get the profile picture
-      let profileImage = '';
-      if (profile.picture) {
-        // OpenID Connect format
-        profileImage = profile.picture;
-      } else if (profile.photos && profile.photos.length > 0) {
-        // Traditional format
-        profileImage = profile.photos[0].value;
-      }
-      
-      console.log(`Creating new user from LinkedIn profile: ID=${linkedinId}, Name=${fullName}, Email=${email ? 'Available' : 'Not provided'}`);
-      
-      // Create user data object compliant with our schema
       const userData: InsertUser = {
-        username: linkedinId, // Use LinkedIn ID as username
-        password: '', // No password needed for OAuth users
-        email: email,
-        fullName: fullName,
+        username: linkedinId,
+        password: '', // OAuth users don't need passwords 
+        email,
+        fullName,
         linkedinId,
         accessToken,
         refreshToken: refreshToken || '',
         isConnected: true,
         profileImage,
-        headline: profile.headline || profile._json?.headline || ''
+        headline
       };
       
+      // Create the user in our database
       user = await storage.createUser(userData);
-
-      // Create default profile for the user
+      
+      // Create initial profile data
       const profileData: InsertProfile = {
         userId: user.id,
         profileData: {
@@ -119,45 +82,43 @@ passport.use(new LinkedInStrategy({
       await storage.createProfile(profileData);
     } else {
       // Update existing user with new tokens
+      console.log(`Updating existing user: ${user.fullName}`);
+      
       await storage.updateUser(user.id, {
         accessToken,
         refreshToken: refreshToken || '',
-        isConnected: true
+        isConnected: true,
+        // Update profile image and headline in case they've changed
+        profileImage,
+        headline
       });
     }
     
+    // Complete authentication and proceed
     return done(null, user);
   } catch (error) {
-    console.error('LinkedIn auth error:', error);
+    console.error('LinkedIn authentication error:', error);
     return done(error as Error);
   }
 }));
 
-// Helper function to fetch more profile data using LinkedIn's API
+/**
+ * Fetch extended user profile data from LinkedIn API
+ * Uses the userinfo endpoint available with OpenID Connect scopes
+ */
 export async function fetchLinkedInProfileData(accessToken: string) {
   try {
-    console.log('Fetching LinkedIn profile data with token');
-    
-    // Fetch OpenID Connect user info (works with the 'openid' and 'profile' scopes)
-    const userInfoResponse = await axios.get('https://api.linkedin.com/v2/userinfo', {
+    // Call LinkedIn's OpenID Connect userinfo endpoint
+    const response = await axios.get('https://api.linkedin.com/v2/userinfo', {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'cache-control': 'no-cache'
       }
     });
     
-    console.log('Received response from LinkedIn userinfo endpoint');
+    const userData = response.data;
     
-    // With the openid and profile scopes, we should have access to basic profile info
-    const userData = userInfoResponse.data;
-    
-    // The email should be available directly from the userinfo endpoint if 'email' scope is granted
-    const email = userData.email || null;
-    
-    // The picture should also be available from the userinfo endpoint
-    const profilePicture = userData.picture || null;
-    
-    // Extract user name from the token response
+    // Format the profile data consistently
     let firstName = '';
     let lastName = '';
     
@@ -171,15 +132,12 @@ export async function fetchLinkedInProfileData(accessToken: string) {
       }
     }
     
-    // Enhanced logging for debugging
-    console.log(`LinkedIn profile data fetched: ID=${userData.sub}, Name=${userData.name}`);
-    
     return {
       id: userData.sub,
       firstName,
       lastName,
-      email,
-      profilePicture,
+      email: userData.email || null,
+      profilePicture: userData.picture || null,
       headline: userData.headline || null,
     };
   } catch (error) {
@@ -188,12 +146,11 @@ export async function fetchLinkedInProfileData(accessToken: string) {
   }
 }
 
-// Serialize user to session
+// Set up session serialization for authentication
 passport.serializeUser((user: Express.User, done) => {
   done(null, (user as any).id);
 });
 
-// Deserialize user from session
 passport.deserializeUser(async (id: number, done) => {
   try {
     const user = await storage.getUser(id);
@@ -203,7 +160,7 @@ passport.deserializeUser(async (id: number, done) => {
   }
 });
 
-// Middleware to check if user is authenticated
+// Authentication middleware for protected routes
 export function isAuthenticated(req: Request, res: Response, next: NextFunction) {
   if (req.isAuthenticated()) {
     return next();
