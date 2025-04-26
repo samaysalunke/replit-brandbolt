@@ -1,0 +1,46 @@
+Build a LinkedIn authentication application that connects users with LinkedIn and displays their profile information.
+
+Technical Requirements:
+1. Use React with TypeScript and Vite for the frontend
+2. Implement Material UI for components and styling
+3. Use Supabase for authentication and profile data storage
+4. Set up LinkedIn OAuth integration with these exact scopes: openid, profile, email, w_member_social
+
+Important Specifications:
+- The LinkedIn OAuth callback URL MUST be: https://linkedin-growth-coach.replit.app/api/auth/linkedin/callback
+- Create an Express server to handle the API routes in Replit
+
+Authentication Flow Implementation (Critical for Replit):
+1. Create a separate Express server in a '/api' folder that will handle the callback specifically
+2. In your Express server, define a route: GET /api/auth/linkedin/callback
+3. This route should:
+   - Extract the authorization code from the query parameters
+   - Use the code to request an access token from LinkedIn
+   - Use the access token to fetch user profile data from LinkedIn API
+   - Create or update the user in Supabase
+   - Create a session token using Supabase's admin functions
+   - Set this token as an HTTP-only cookie
+   - Redirect to your frontend profile page
+
+4. Frontend Authentication:
+   - Create a custom hook to check for the authenticated session
+   - On app initialization, verify if a valid session exists using the cookie
+   - Implement a login button on the homepage that redirects to LinkedIn OAuth URL
+   - After callback processing, the user should see their profile page
+   - Handle loading and error states with Material UI components
+
+UI Components:
+1. Homepage with Material UI Button for "Connect with LinkedIn"
+2. Loading/processing component using Material UI CircularProgress
+3. Profile page with:
+   - Material UI Card containing the user's LinkedIn profile image
+   - Typography components for name, headline, and email
+   - Paper component showing additional LinkedIn data
+   - Button for logging out
+
+Data Storage in Supabase:
+1. Create a 'profiles' table with fields for LinkedIn data
+2. Store the LinkedIn access token securely
+3. Implement functions to query and update profile data
+
+Ensure proper error handling throughout the application, especially during the callback process which is where Replit typically struggles. Log detailed information during the authentication flow for debugging purposes.
