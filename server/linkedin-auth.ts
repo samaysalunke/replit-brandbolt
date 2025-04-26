@@ -34,7 +34,12 @@ passport.use(new LinkedInStrategy({
   scope: ['openid', 'profile', 'email', 'w_member_social'],
   state: true
 }, async function(accessToken: string, refreshToken: string, profile: any, done: any) {
-  console.log('LinkedIn OAuth callback received with OpenID Connect profile. Profile ID:', profile?.id || profile?.sub);
+  console.log('=== LINKEDIN OAUTH STRATEGY CALLBACK ===');
+  console.log('Profile data received from LinkedIn:');
+  console.log(JSON.stringify(profile, null, 2));
+  console.log('Access token received (first 10 chars):', accessToken.substring(0, 10) + '...');
+  console.log('Refresh token present:', !!refreshToken);
+  
   try {
     // With OpenID Connect, the user ID is in the 'sub' field
     const linkedinId = profile.sub || profile.id;

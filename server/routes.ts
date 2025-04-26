@@ -251,8 +251,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // LinkedIn OAuth callback - register both callback URLs to handle both local and deployed environments
   const callbackHandler = (req: Request, res: Response) => {
-    // Log the successful authentication
-    console.log(`LinkedIn auth successful, user ID: ${(req.user as any)?.id}`);
+    // Detailed logging of the callback request
+    console.log('=== LINKEDIN CALLBACK RECEIVED ===');
+    console.log(`Callback URL: ${req.originalUrl}`);
+    console.log(`Authenticated: ${req.isAuthenticated()}`);
+    console.log(`User ID: ${(req.user as any)?.id}`);
+    console.log(`User object:`, JSON.stringify(req.user, null, 2));
+    console.log(`Session ID: ${req.sessionID}`);
+    console.log(`Session data:`, req.session);
     
     // Determine where to redirect after successful login
     let returnTo = '/dashboard'; // Default redirect location
@@ -269,23 +275,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.redirect(returnTo);
   };
   
-  // Register the callback URL for the LinkedIn OAuth flow - two routes to handle both local and deployed environments
-  app.get('/api/auth/linkedin/callback', 
-    passport.authenticate('linkedin', { 
-      failureRedirect: '/auth',
-      failureMessage: true
-    }),
-    callbackHandler
-  );
+  // Create a custom callback for better error handling
+  const linkedInAuthMiddleware = (req: Request, res: Response, next: NextFunction) => {
+    console.log('=== PROCESSING LINKEDIN CALLBACK REQUEST ===');
+    console.log(`Request URL: ${req.originalUrl}`);
+    console.log(`Request query params:`, req.query);
+    
+    passport.authenticate('linkedin', { session: true }, (err: any, user: any, info: any) => {
+      console.log('LinkedIn passport.authenticate callback executing');
+      
+      if (err) {
+        console.error('LinkedIn authentication ERROR:', err);
+        return res.redirect('/auth?error=' + encodeURIComponent('Authentication failed'));
+      }
+      
+      if (!user) {
+        console.error('LinkedIn authentication failed - No user:', info);
+        return res.redirect('/auth?error=' + encodeURIComponent('Authentication failed'));
+      }
+      
+      // Log in the user manually
+      req.logIn(user, (err) => {
+        if (err) {
+          console.error('Error during req.logIn:', err);
+          return next(err);
+        }
+        
+        console.log('User successfully logged in via LinkedIn:', user.id);
+        return callbackHandler(req, res);
+      });
+    })(req, res, next);
+  };
   
-  // Also register at the root level for absolute URLs (needed for some environments)
-  app.get('/auth/linkedin/callback', 
-    passport.authenticate('linkedin', { 
-      failureRedirect: '/auth',
-      failureMessage: true
-    }),
-    callbackHandler
-  );
+  // Register the callback URL for the LinkedIn OAuth flow - with detailed error handling
+  app.get('/api/auth/linkedin/callback', linkedInAuthMiddleware);
+  
+  // Also register at the root level (needed for some environments)
+  app.get('/auth/linkedin/callback', linkedInAuthMiddleware);
+  
+  // Create a catch-all handler for LinkedIn callback to capture any callback format
+  app.get('*/linkedin/callback*', (req, res, next) => {
+    console.log('=== CATCH-ALL LINKEDIN CALLBACK RECEIVED ===');
+    console.log(`Request URL: ${req.originalUrl}`);
+    console.log('Query params:', req.query);
+    
+    // Try to redirect to one of our known callback URLs
+    if (req.originalUrl.includes('code=')) {
+      const redirectTo = '/api/auth/linkedin/callback' + req.originalUrl.split('?')[1];
+      console.log(`Redirecting callback to standard URL: ${redirectTo}`);
+      return res.redirect(redirectTo);
+    }
+    
+    next();
+  });
   
   // Get profile data from LinkedIn
   app.get('/api/auth/linkedin/profile', isAuthenticated, async (req, res) => {

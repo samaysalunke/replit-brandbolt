@@ -105,6 +105,13 @@ function App() {
             </MainLayout>
           )} />
         </Route>
+        <Route path="/dashboard">
+          <AuthRoute component={() => (
+            <MainLayout>
+              <Dashboard />
+            </MainLayout>
+          )} />
+        </Route>
         <Route path="/content-creator">
           <AuthRoute component={() => (
             <MainLayout>
