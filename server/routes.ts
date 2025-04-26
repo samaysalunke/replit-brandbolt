@@ -313,17 +313,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Also register at the root level (needed for some environments)
   app.get('/auth/linkedin/callback', linkedInAuthMiddleware);
   
-  // Create a catch-all handler for LinkedIn callback to capture any callback format
-  app.get('*/linkedin/callback*', (req, res, next) => {
-    console.log('=== CATCH-ALL LINKEDIN CALLBACK RECEIVED ===');
+  // Special handler for the exact URL registered in LinkedIn developer console
+  app.get('/', (req, res, next) => {
+    console.log('=== ROOT PATH REQUEST WITH QUERY PARAMS ===');
     console.log(`Request URL: ${req.originalUrl}`);
     console.log('Query params:', req.query);
     
-    // Try to redirect to one of our known callback URLs
-    if (req.originalUrl.includes('code=')) {
-      const redirectTo = '/api/auth/linkedin/callback' + req.originalUrl.split('?')[1];
-      console.log(`Redirecting callback to standard URL: ${redirectTo}`);
-      return res.redirect(redirectTo);
+    // Check if this is a LinkedIn callback redirected to the root
+    if (req.query.code && req.query.state && req.originalUrl.includes('code=')) {
+      console.log('Detected LinkedIn OAuth callback params on root URL - handling with auth middleware');
+      return linkedInAuthMiddleware(req, res, next);
+    }
+    
+    next();
+  });
+  
+  // Create a catch-all handler for LinkedIn callback to capture any callback format
+  // This must be registered AFTER the more specific routes
+  app.use((req, res, next) => {
+    if (req.path.includes('linkedin/callback') || 
+        (req.query.code && req.query.state && typeof req.query.code === 'string' && req.query.code.startsWith('AQ'))) {
+      console.log('=== CATCH-ALL LINKEDIN CALLBACK RECEIVED ===');
+      console.log(`Request URL: ${req.originalUrl}`);
+      console.log(`Request path: ${req.path}`);
+      console.log('Query params:', req.query);
+      
+      // Handle this as a LinkedIn callback
+      return linkedInAuthMiddleware(req, res, next);
     }
     
     next();
