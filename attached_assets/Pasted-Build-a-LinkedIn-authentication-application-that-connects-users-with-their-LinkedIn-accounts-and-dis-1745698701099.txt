@@ -1,0 +1,38 @@
+Build a LinkedIn authentication application that connects users with their LinkedIn accounts and displays their profile information.
+
+Core Requirements:
+1. Create an application that implements LinkedIn OAuth authentication
+2. Use Supabase as the database for storing user profile data
+3. Display the user's LinkedIn profile information after successful authentication
+
+Key Specifications:
+- The LinkedIn OAuth callback URL MUST be: https://linkedin-growth-coach.replit.app/api/auth/linkedin/callback
+- Request these scopes from LinkedIn: openid, profile, email, w_member_social
+- Choose any tech stack you prefer for implementation (frontend and backend)
+
+Authentication Flow Implementation (Critical):
+1. Create a homepage with a prominent "Connect with LinkedIn" button
+2. Set up an API endpoint to handle the callback at /api/auth/linkedin/callback that:
+   - Extracts the authorization code from the query parameters
+   - Exchanges the code for an access token from LinkedIn
+   - Uses the access token to fetch the user's profile data
+   - Creates or updates the user record in Supabase
+   - Establishes a persistent session for the user
+   - Redirects to the profile display page
+
+3. On the callback endpoint, implement careful error handling and logging since this is where Replit often has issues with OAuth flows
+
+Supabase Integration:
+1. Set up a profiles table to store LinkedIn user data
+2. Implement functions to query and update profile information
+3. Use Supabase authentication features if appropriate for your implementation
+
+Profile Display:
+1. After successful authentication, show a profile page with:
+   - The user's LinkedIn profile picture
+   - Name and headline
+   - Email address
+   - Any additional profile information available
+   - A logout button
+
+Ensure proper error handling throughout the application, with user-friendly error messages. Include detailed logging during the authentication process to troubleshoot any issues with the LinkedIn OAuth flow in the Replit environment.

@@ -283,41 +283,32 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.resolve(__dirname, '../dist/public')));
 }
 
-// In development, dynamically import and create Vite server
+// In development, just serve static files directly 
 if (process.env.NODE_ENV === 'development') {
-  // We'll proxy API requests to our Express app
-  try {
-    // Note: We're using dynamic import syntax for Vite to avoid importing it in production
-    const { createServer } = await import('vite');
-    const viteServer = await createServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-      root: path.resolve(__dirname, '../client'),
-    });
-
-    // Use Vite's connect instance as middleware
-    app.use(viteServer.middlewares);
-    
-    console.log('Vite development server started successfully');
-  } catch (error) {
-    console.error('Failed to start Vite development server:', error);
-    
-    // Fallback to static serving if Vite fails
-    app.use(express.static(path.resolve(__dirname, '../client'), {
-      setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.js')) {
-          res.setHeader('Content-Type', 'application/javascript');
-        } else if (filePath.endsWith('.mjs')) {
-          res.setHeader('Content-Type', 'application/javascript');
-        } else if (filePath.endsWith('.ts') || filePath.endsWith('.tsx')) {
-          res.setHeader('Content-Type', 'application/javascript');
-        } else if (filePath.endsWith('.css')) {
-          res.setHeader('Content-Type', 'text/css');
-        }
+  // Use express.static to serve the client files
+  console.log('Serving from client directory using Express static middleware');
+  
+  // Serve the static client files
+  app.use(express.static(path.resolve(__dirname, '../client'), {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.js')) {
+        res.setHeader('Content-Type', 'application/javascript');
+      } else if (filePath.endsWith('.mjs')) {
+        res.setHeader('Content-Type', 'application/javascript');
+      } else if (filePath.endsWith('.ts') || filePath.endsWith('.tsx')) {
+        res.setHeader('Content-Type', 'application/javascript');
+      } else if (filePath.endsWith('.css')) {
+        res.setHeader('Content-Type', 'text/css');
       }
-    }));
-  }
+    }
+  }));
 }
+
+// Add a specific handler for the root route
+app.get('/', (req, res) => {
+  // Serve our static HTML directly
+  res.sendFile(path.resolve(__dirname, '../client', 'static-index.html'));
+});
 
 // For any other routes not handled before, in both dev and prod
 // serve the client app - React Router will handle the routing
@@ -329,9 +320,10 @@ app.get('*', (req, res) => {
   
   // Otherwise serve the client app
   if (process.env.NODE_ENV === 'production') {
-    res.sendFile(path.resolve(__dirname, '../client/dist', 'index.html'));
+    res.sendFile(path.resolve(__dirname, '../dist/public', 'index.html'));
   } else {
-    res.sendFile(path.resolve(__dirname, '../client', 'index.html'));
+    // In development, use our static HTML file until the React app is working
+    res.sendFile(path.resolve(__dirname, '../client', 'static-index.html'));
   }
 });
 
