@@ -10,13 +10,11 @@ const getCallbackUrl = () => {
   // The callback URL *MUST* match exactly what's registered in LinkedIn developer console
   // Otherwise, we'll get the "redirect_uri does not match the registered value" error
 
-  // Based on current behavior in the Replit environment, it seems LinkedIn might be routing
-  // to /callback instead of the full path we registered
+  // Based on the redirect URL in your LinkedIn developer console, it looks like this is the URL
+  // LinkedIn is redirecting to:
+  const CALLBACK_URL = 'https://linkedin-growth-coach.replit.app/api/auth/linkedin/callback';
   
-  // Let's use a relative URL that should work regardless of the domain
-  const CALLBACK_URL = '/callback';
-  
-  console.log(`Using simpler callback URL path: ${CALLBACK_URL}`);
+  console.log(`Using exact registered callback URL: ${CALLBACK_URL}`);
   return CALLBACK_URL;
 };
 
