@@ -280,23 +280,43 @@ const __dirname = path.dirname(__filename);
 // In production, serve the built client assets
 if (process.env.NODE_ENV === 'production') {
   // Set static folder
-  app.use(express.static(path.resolve(__dirname, '../client/dist')));
+  app.use(express.static(path.resolve(__dirname, '../dist/public')));
 }
 
-// In development, serve from the client directory for Vite to hot-reload
+// In development, dynamically import and create Vite server
 if (process.env.NODE_ENV === 'development') {
-  app.use(express.static(path.resolve(__dirname, '../client'), {
-    setHeaders: (res, path) => {
-      // Set appropriate MIME types for JavaScript modules
-      if (path.endsWith('.js')) {
-        res.setHeader('Content-Type', 'application/javascript');
-      } else if (path.endsWith('.mjs')) {
-        res.setHeader('Content-Type', 'application/javascript');
-      } else if (path.endsWith('.ts') || path.endsWith('.tsx')) {
-        res.setHeader('Content-Type', 'application/javascript');
+  // We'll proxy API requests to our Express app
+  try {
+    // Note: We're using dynamic import syntax for Vite to avoid importing it in production
+    const { createServer } = await import('vite');
+    const viteServer = await createServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+      root: path.resolve(__dirname, '../client'),
+    });
+
+    // Use Vite's connect instance as middleware
+    app.use(viteServer.middlewares);
+    
+    console.log('Vite development server started successfully');
+  } catch (error) {
+    console.error('Failed to start Vite development server:', error);
+    
+    // Fallback to static serving if Vite fails
+    app.use(express.static(path.resolve(__dirname, '../client'), {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.js')) {
+          res.setHeader('Content-Type', 'application/javascript');
+        } else if (filePath.endsWith('.mjs')) {
+          res.setHeader('Content-Type', 'application/javascript');
+        } else if (filePath.endsWith('.ts') || filePath.endsWith('.tsx')) {
+          res.setHeader('Content-Type', 'application/javascript');
+        } else if (filePath.endsWith('.css')) {
+          res.setHeader('Content-Type', 'text/css');
+        }
       }
-    }
-  }));
+    }));
+  }
 }
 
 // For any other routes not handled before, in both dev and prod
