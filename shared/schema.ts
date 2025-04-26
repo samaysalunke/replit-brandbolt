@@ -1,6 +1,7 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, index, pgEnum, foreignKey, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
 
 // User Model
 export const users = pgTable("users", {
@@ -26,10 +27,17 @@ export const insertUserSchema = createInsertSchema(users).omit({
 // Profile Data Model
 export const profiles = pgTable("profiles", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   profileData: jsonb("profile_data"),
   profileScore: integer("profile_score"),
   lastUpdated: timestamp("last_updated").defaultNow(),
+}, (table) => {
+  return {
+    userIdIdx: index("profile_user_id_idx").on(table.userId),
+    uniqueUserProfile: unique("unique_user_profile").on(table.userId)
+  };
 });
 
 export const insertProfileSchema = createInsertSchema(profiles).omit({
@@ -37,20 +45,31 @@ export const insertProfileSchema = createInsertSchema(profiles).omit({
   lastUpdated: true,
 });
 
+// Post status enum
+export const postStatusEnum = pgEnum('post_status', ['draft', 'scheduled', 'published']);
+
 // Posts Model
 export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   postType: text("post_type").default("text"),
   hashtags: text("hashtags").array(),
   mediaUrls: text("media_urls").array(),
   scheduledFor: timestamp("scheduled_for"),
   publishedAt: timestamp("published_at"),
-  status: text("status").default("draft"), // draft, scheduled, published
+  status: text("status").default("draft"), // Using text for compatibility, but we're defining an enum too
   engagementData: jsonb("engagement_data"),
   linkedinPostId: text("linkedin_post_id"),
   createdAt: timestamp("created_at").defaultNow(),
+}, (table) => {
+  return {
+    userIdIdx: index("post_user_id_idx").on(table.userId),
+    statusIdx: index("post_status_idx").on(table.status),
+    scheduledForIdx: index("post_scheduled_for_idx").on(table.scheduledFor)
+  };
 });
 
 export const insertPostSchema = createInsertSchema(posts).omit({
@@ -61,7 +80,9 @@ export const insertPostSchema = createInsertSchema(posts).omit({
 // Goals Model
 export const goals = pgTable("goals", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   targetValue: integer("target_value").notNull(),
   currentValue: integer("current_value").default(0),
@@ -70,6 +91,12 @@ export const goals = pgTable("goals", {
   endDate: timestamp("end_date"),
   isCompleted: boolean("is_completed").default(false),
   createdAt: timestamp("created_at").defaultNow(),
+}, (table) => {
+  return {
+    userIdIdx: index("goal_user_id_idx").on(table.userId),
+    goalTypeIdx: index("goal_type_idx").on(table.goalType),
+    isCompletedIdx: index("goal_is_completed_idx").on(table.isCompleted)
+  };
 });
 
 export const insertGoalSchema = createInsertSchema(goals).omit({
@@ -81,7 +108,9 @@ export const insertGoalSchema = createInsertSchema(goals).omit({
 // Content Suggestions Model
 export const contentSuggestions = pgTable("content_suggestions", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   content: text("content").notNull(),
   category: text("category").notNull(),
@@ -89,6 +118,13 @@ export const contentSuggestions = pgTable("content_suggestions", {
   isSaved: boolean("is_saved").default(false),
   isUsed: boolean("is_used").default(false),
   createdAt: timestamp("created_at").defaultNow(),
+}, (table) => {
+  return {
+    userIdIdx: index("suggestion_user_id_idx").on(table.userId),
+    categoryIdx: index("suggestion_category_idx").on(table.category),
+    isSavedIdx: index("suggestion_is_saved_idx").on(table.isSaved),
+    isUsedIdx: index("suggestion_is_used_idx").on(table.isUsed)
+  };
 });
 
 export const insertContentSuggestionSchema = createInsertSchema(contentSuggestions).omit({
@@ -111,3 +147,42 @@ export type Goal = typeof goals.$inferSelect;
 
 export type InsertContentSuggestion = z.infer<typeof insertContentSuggestionSchema>;
 export type ContentSuggestion = typeof contentSuggestions.$inferSelect;
+
+// Set up relations between tables
+export const usersRelations = relations(users, ({ one, many }) => ({
+  profile: one(profiles, {
+    fields: [users.id],
+    references: [profiles.userId],
+  }),
+  posts: many(posts),
+  goals: many(goals),
+  contentSuggestions: many(contentSuggestions),
+}));
+
+export const profilesRelations = relations(profiles, ({ one }) => ({
+  user: one(users, {
+    fields: [profiles.userId],
+    references: [users.id],
+  }),
+}));
+
+export const postsRelations = relations(posts, ({ one }) => ({
+  user: one(users, {
+    fields: [posts.userId],
+    references: [users.id],
+  }),
+}));
+
+export const goalsRelations = relations(goals, ({ one }) => ({
+  user: one(users, {
+    fields: [goals.userId],
+    references: [users.id],
+  }),
+}));
+
+export const contentSuggestionsRelations = relations(contentSuggestions, ({ one }) => ({
+  user: one(users, {
+    fields: [contentSuggestions.userId],
+    references: [users.id],
+  }),
+}));
