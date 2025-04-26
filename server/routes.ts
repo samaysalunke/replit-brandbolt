@@ -254,18 +254,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Handle the main LinkedIn callback URL - this is where LinkedIn will redirect after authentication
   app.get('/api/auth/linkedin/callback', (req, res, next) => {
-    console.log('LinkedIn callback received:', {
-      url: req.originalUrl,
-      query: req.query
-    });
+    console.log('=== LINKEDIN CALLBACK RECEIVED ===');
+    console.log('Callback URL:', req.originalUrl);
+    console.log('Query parameters:', req.query);
+    console.log('Headers:', req.headers.host, req.headers.referer);
+    console.log('Session ID:', req.sessionID);
+    console.log('Session data:', req.session);
     
     // Extract return URL from state or session
     let returnTo = '/dashboard'; // Default fallback
     
     if (req.query.state) {
       returnTo = req.query.state as string;
+      console.log(`Using state parameter for returnTo: ${returnTo}`);
     } else if ((req.session as any).returnTo) {
       returnTo = (req.session as any).returnTo;
+      console.log(`Using session returnTo: ${returnTo}`);
+    } else {
+      console.log(`No returnTo found, using default: ${returnTo}`);
     }
     
     // Clear returnTo from session
@@ -292,7 +298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return next(loginErr);
         }
         
-        console.log(`LinkedIn authentication successful for user ID: ${user.id}`);
+        console.log(`LinkedIn authentication successful for user ID: ${(user as any).id}`);
         return res.redirect(returnTo);
       });
     })(req, res, next);

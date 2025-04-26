@@ -19,13 +19,33 @@ console.log('LinkedIn Client ID:', process.env.LINKEDIN_CLIENT_ID?.substring(0, 
 console.log('LinkedIn Client Secret available:', !!process.env.LINKEDIN_CLIENT_SECRET);
 
 // Configure LinkedIn OAuth Strategy
-passport.use(new LinkedInStrategy({
+const linkedInOptions = {
   clientID: process.env.LINKEDIN_CLIENT_ID as string,
   clientSecret: process.env.LINKEDIN_CLIENT_SECRET as string,
   callbackURL: CALLBACK_URL,
   scope: ['openid', 'profile', 'email', 'w_member_social'], // Approved LinkedIn scopes
-  state: true
-}, async (accessToken, refreshToken, profile, done) => {
+  state: true,
+  profileFields: ['id', 'first-name', 'last-name', 'email-address', 'headline', 'picture-url']
+};
+
+console.log('Initializing LinkedIn strategy with options:', {
+  ...linkedInOptions,
+  clientID: linkedInOptions.clientID.substring(0, 6) + '...',
+  clientSecret: '[HIDDEN]'
+});
+
+passport.use(new LinkedInStrategy(
+  linkedInOptions, 
+  async (accessToken: string, refreshToken: string, profile: any, done: (err: any, user?: any) => void) => {
+    console.log('LinkedIn auth callback executing with profile:', {
+      id: profile.id,
+      displayName: profile.displayName,
+      emails: profile.emails,
+      photos: profile.photos,
+      provider: profile.provider,
+      _raw: profile._raw ? '[PRESENT]' : '[NOT PRESENT]',
+      _json: profile._json ? 'PRESENT' : 'NOT PRESENT'
+    });
   try {
     console.log('LinkedIn auth successful, processing user data');
     
@@ -35,12 +55,24 @@ passport.use(new LinkedInStrategy({
     // Check if user already exists in our database
     let user = await storage.getUserByLinkedInId(linkedinId);
     
-    // Extract basic profile info
-    const email = profile.email || (profile.emails?.[0]?.value || '');
-    const fullName = profile.name || profile.displayName || 
-                    `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`.trim();
-    const profileImage = profile.picture || (profile.photos?.[0]?.value || '');
-    const headline = profile.headline || profile._json?.headline || '';
+    // Extract basic profile info using proper type handling
+    const email = profile.email || (profile.emails && profile.emails[0] ? profile.emails[0].value : '');
+    
+    // Handle different profile name formats safely
+    let fullName = '';
+    if (typeof profile.name === 'string') {
+      fullName = profile.name;
+    } else if (profile.displayName) {
+      fullName = profile.displayName;
+    } else if (profile.name && typeof profile.name === 'object') {
+      // For OpenID Connect format
+      const firstName = profile.name.givenName || '';
+      const lastName = profile.name.familyName || '';
+      fullName = `${firstName} ${lastName}`.trim();
+    }
+    
+    const profileImage = profile.picture || (profile.photos && profile.photos[0] ? profile.photos[0].value : '');
+    const headline = profile.headline || (profile._json && profile._json.headline ? profile._json.headline : '');
     
     if (!user) {
       // Create new user record if this is first login
