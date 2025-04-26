@@ -6,7 +6,6 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { setupViteDevServer } from './vite';
 
 // Load environment variables
 dotenv.config();
@@ -274,33 +273,52 @@ app.post('/api/auth/logout', async (req, res) => {
   }
 });
 
-// Serve static assets in production
+// Get directory name of current module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// In production, serve the built client assets
 if (process.env.NODE_ENV === 'production') {
-  // Get directory name of current module
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  
   // Set static folder
   app.use(express.static(path.resolve(__dirname, '../client/dist')));
-
-  app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../client/dist', 'index.html'));
-  });
 }
 
-// Setup Vite development server
-(async () => {
-  try {
-    await setupViteDevServer(app);
-    
-    // Start the server
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`LinkedIn OAuth Callback URL: ${LINKEDIN_REDIRECT_URI}`);
-      console.log(`LinkedIn Client ID: ${LINKEDIN_CLIENT_ID?.substring(0, 8)}...`);
-      console.log(`LinkedIn Client Secret available: ${LINKEDIN_CLIENT_SECRET ? 'true' : 'false'}`);
-    });
-  } catch (error) {
-    console.error('Server startup error:', error);
+// In development, serve from the client directory for Vite to hot-reload
+if (process.env.NODE_ENV === 'development') {
+  app.use(express.static(path.resolve(__dirname, '../client'), {
+    setHeaders: (res, path) => {
+      // Set appropriate MIME types for JavaScript modules
+      if (path.endsWith('.js')) {
+        res.setHeader('Content-Type', 'application/javascript');
+      } else if (path.endsWith('.mjs')) {
+        res.setHeader('Content-Type', 'application/javascript');
+      } else if (path.endsWith('.ts') || path.endsWith('.tsx')) {
+        res.setHeader('Content-Type', 'application/javascript');
+      }
+    }
+  }));
+}
+
+// For any other routes not handled before, in both dev and prod
+// serve the client app - React Router will handle the routing
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api')) {
+    // If it's an API route that wasn't handled, return 404
+    return res.status(404).json({ error: 'API endpoint not found' });
   }
-})();
+  
+  // Otherwise serve the client app
+  if (process.env.NODE_ENV === 'production') {
+    res.sendFile(path.resolve(__dirname, '../client/dist', 'index.html'));
+  } else {
+    res.sendFile(path.resolve(__dirname, '../client', 'index.html'));
+  }
+});
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`LinkedIn OAuth Callback URL: ${LINKEDIN_REDIRECT_URI}`);
+  console.log(`LinkedIn Client ID: ${LINKEDIN_CLIENT_ID?.substring(0, 8)}...`);
+  console.log(`LinkedIn Client Secret available: ${LINKEDIN_CLIENT_SECRET ? 'true' : 'false'}`);
+});

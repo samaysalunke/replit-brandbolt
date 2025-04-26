@@ -18,6 +18,7 @@ import {
 import { LinkedIn, Logout, Refresh } from '@mui/icons-material';
 import { useAuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
+import { formatDate } from '../lib/utils';
 
 const ProfilePage = () => {
   const { user, loading, error, logout, refreshProfile } = useAuthContext();
@@ -157,7 +158,7 @@ const ProfilePage = () => {
               Account Created
             </Typography>
             <Typography variant="body1">
-              {user.created_at ? new Date(user.created_at as string).toLocaleString() : 'Not available'}
+              {formatDate(user.created_at)}
             </Typography>
           </Box>
           
@@ -166,7 +167,7 @@ const ProfilePage = () => {
               Last Updated
             </Typography>
             <Typography variant="body1">
-              {user.last_updated ? new Date(user.last_updated as string).toLocaleString() : 'Not available'}
+              {formatDate(user.last_updated)}
             </Typography>
           </Box>
         </Box>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { Profile } from '../../../shared/schema';
+import { LinkedInAPI } from '../lib/linkedin-api';
+import { useQuery, useMutation } from '@tanstack/react-query';
 
 interface AuthState {
   user: Profile | null;
@@ -15,56 +16,62 @@ export const useAuth = () => {
     error: null,
   });
 
-  const fetchProfile = async () => {
-    try {
-      setAuthState(prev => ({ ...prev, loading: true, error: null }));
-      const response = await axios.get('/api/profile', {
-        withCredentials: true,
-      });
-      setAuthState({
-        user: response.data.profile,
-        loading: false,
-        error: null,
-      });
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-      setAuthState({
-        user: null,
-        loading: false,
-        error: 'Failed to fetch user profile',
-      });
-    }
-  };
+  // Use React Query to fetch and cache the profile data
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['/api/profile'],
+    queryFn: async () => {
+      try {
+        const result = await LinkedInAPI.getProfile();
+        return result.profile;
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        return null;
+      }
+    },
+    retry: 0, // Don't retry on 401 unauthorized
+  });
 
-  const logout = async () => {
-    try {
-      setAuthState(prev => ({ ...prev, loading: true }));
-      await axios.post('/api/auth/logout', {}, { withCredentials: true });
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: LinkedInAPI.logout,
+    onSuccess: () => {
       setAuthState({
         user: null,
         loading: false,
         error: null,
       });
-    } catch (error) {
+    },
+    onError: (error: Error) => {
       console.error('Error logging out:', error);
       setAuthState(prev => ({
         ...prev,
         loading: false,
         error: 'Failed to logout',
       }));
-    }
-  };
+    },
+  });
 
+  // Update state when data changes
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    if (!isLoading) {
+      setAuthState({
+        user: data || null,
+        loading: false,
+        error: error ? (error as Error).message : null,
+      });
+    }
+  }, [data, isLoading, error]);
 
   return {
     ...authState,
-    login: () => {
-      window.location.href = '/api/auth/linkedin';
+    login: LinkedInAPI.login,
+    logout: async () => {
+      setAuthState(prev => ({ ...prev, loading: true }));
+      await logoutMutation.mutateAsync();
     },
-    logout,
-    refreshProfile: fetchProfile,
+    refreshProfile: async () => {
+      setAuthState(prev => ({ ...prev, loading: true }));
+      await refetch();
+    },
   };
 };
