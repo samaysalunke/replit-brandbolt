@@ -236,139 +236,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Start LinkedIn OAuth flow
   app.get('/api/auth/linkedin', (req, res, next) => {
-    // Store the return URL in the session if it's provided
+    // Store return URL in session
     const returnTo = (req.query.returnTo as string) || '/dashboard';
-    // Use type assertion to handle session property access
     (req.session as any).returnTo = returnTo;
     
-    // Log the OAuth flow start
-    console.log(`Starting LinkedIn OAuth flow with returnTo: ${returnTo}`);
+    console.log(`LinkedIn authentication started - will redirect to ${returnTo} after login`);
     
-    // Use a custom state parameter to help identify our callback 
-    const authOptions = {
-      state: `${Math.random().toString(36).substring(2, 15)}:${returnTo}`,
-      scope: ['openid', 'profile', 'email', 'w_member_social']
-    };
-    
-    console.log('LinkedIn auth options:', authOptions);
-    passport.authenticate('linkedin', authOptions)(req, res, next);
+    // Start the LinkedIn authentication process with simplified options
+    passport.authenticate('linkedin', {
+      scope: ['openid', 'profile', 'email', 'w_member_social'],
+      state: returnTo // Store returnTo in state parameter
+    })(req, res, next);
   });
   
-  // LinkedIn OAuth callback - register both callback URLs to handle both local and deployed environments
-  const callbackHandler = (req: Request, res: Response) => {
-    // Detailed logging of the callback request
-    console.log('=== LINKEDIN CALLBACK RECEIVED ===');
-    console.log(`Callback URL: ${req.originalUrl}`);
-    console.log(`Authenticated: ${req.isAuthenticated()}`);
-    console.log(`User ID: ${(req.user as any)?.id}`);
-    console.log(`User object:`, JSON.stringify(req.user, null, 2));
-    console.log(`Session ID: ${req.sessionID}`);
-    console.log(`Session data:`, req.session);
+  // LinkedIn authentication now uses clean, direct handlers
+  // See the main callback implementation at app.get('/api/auth/linkedin/callback', ...)
+  
+  // Handle the main LinkedIn callback URL - this is where LinkedIn will redirect after authentication
+  app.get('/api/auth/linkedin/callback', (req, res, next) => {
+    console.log('LinkedIn callback received:', {
+      url: req.originalUrl,
+      query: req.query
+    });
     
-    // Determine where to redirect after successful login
-    let returnTo = '/dashboard'; // Default redirect location
+    // Extract return URL from state or session
+    let returnTo = '/dashboard'; // Default fallback
     
-    // Check for returnTo in session
-    if (req.session && (req.session as any).returnTo) {
+    if (req.query.state) {
+      returnTo = req.query.state as string;
+    } else if ((req.session as any).returnTo) {
       returnTo = (req.session as any).returnTo;
-      delete (req.session as any).returnTo;
     }
     
-    console.log(`Redirecting to: ${returnTo}`);
+    // Clear returnTo from session
+    delete (req.session as any).returnTo;
     
-    // Successful authentication, redirect to the specified page
-    res.redirect(returnTo);
-  };
-  
-  // Create a custom callback for better error handling
-  const linkedInAuthMiddleware = (req: Request, res: Response, next: NextFunction) => {
-    console.log('=== PROCESSING LINKEDIN CALLBACK REQUEST ===');
-    console.log(`Request URL: ${req.originalUrl}`);
-    console.log(`Request query params:`, req.query);
-    
-    passport.authenticate('linkedin', { session: true }, (err: any, user: any, info: any) => {
-      console.log('LinkedIn passport.authenticate callback executing');
-      
+    // Process the authentication
+    passport.authenticate('linkedin', (err: any, user: Express.User, info: any) => {
+      // Handle authentication errors
       if (err) {
-        console.error('LinkedIn authentication ERROR:', err);
-        return res.redirect('/auth?error=' + encodeURIComponent('Authentication failed'));
+        console.error('LinkedIn authentication error:', err);
+        return res.redirect(`/auth?error=${encodeURIComponent(err.message || 'Authentication failed')}`);
       }
       
+      // Handle missing user 
       if (!user) {
-        console.error('LinkedIn authentication failed - No user:', info);
-        return res.redirect('/auth?error=' + encodeURIComponent('Authentication failed'));
+        console.log('LinkedIn authentication failed - no user returned');
+        return res.redirect('/auth?error=login_failed');
       }
       
-      // Log in the user manually
-      req.logIn(user, (err) => {
-        if (err) {
-          console.error('Error during req.logIn:', err);
-          return next(err);
+      // Log the user in
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error('Session login error:', loginErr);
+          return next(loginErr);
         }
         
-        console.log('User successfully logged in via LinkedIn:', user.id);
-        return callbackHandler(req, res);
+        console.log(`LinkedIn authentication successful for user ID: ${user.id}`);
+        return res.redirect(returnTo);
       });
     })(req, res, next);
-  };
-  
-  // Special handler for the EXACT callback URL that LinkedIn is actually redirecting to
-  // This is the URL from LinkedIn redirect
-  app.get('/api/auth/linkedin/callback', (req, res, next) => {
-    console.log('=== EXACT LINKEDIN CALLBACK URL HIT ===');
-    console.log(`Request URL: ${req.originalUrl}`);
-    console.log('Query params:', req.query);
-    console.log('Headers:', req.headers);
-    
-    // Use our LinkedIn auth middleware to process this request
-    return linkedInAuthMiddleware(req, res, next);
   });
   
-  // Also register at the root level (needed for some environments)
-  app.get('/auth/linkedin/callback', linkedInAuthMiddleware);
+  // Also register at the alternate callback URL for flexibility
+  app.get('/auth/linkedin/callback', (req, res, next) => {
+    console.log('LinkedIn callback received at alternate URL - redirecting to main handler');
+    // Forward any query parameters to the main callback handler
+    const queryString = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+    res.redirect(`/api/auth/linkedin/callback${queryString}`);
+  });
   
-  // Special handler for the exact URL registered in LinkedIn developer console
+  // Root path handler that can detect LinkedIn OAuth code redirected to root
   app.get('/', (req, res, next) => {
-    console.log('=== ROOT PATH REQUEST WITH QUERY PARAMS ===');
-    console.log(`Request URL: ${req.originalUrl}`);
-    console.log('Query params:', req.query);
+    // Only log root path access for debugging
+    console.log(`Root path accessed with query params:`, req.query);
     
-    // Check if this is a LinkedIn callback redirected to the root
-    if (req.query.code && req.query.state && req.originalUrl.includes('code=')) {
-      console.log('Detected LinkedIn OAuth callback params on root URL - handling with auth middleware');
-      return linkedInAuthMiddleware(req, res, next);
-    }
-    
-    next();
-  });
-  
-  // Add explicit route for /callback path
-  app.get('/callback', (req, res, next) => {
-    console.log('=== /callback PATH DETECTED ===');
-    console.log(`Request URL: ${req.originalUrl}`);
-    console.log('Query params:', req.query);
-    
-    // If this is a LinkedIn OAuth callback redirected to /callback
+    // If this is a LinkedIn callback that somehow got redirected to root
     if (req.query.code && req.query.state) {
-      console.log('LinkedIn OAuth code detected in /callback route, handling with auth middleware');
-      return linkedInAuthMiddleware(req, res, next);
+      console.log('LinkedIn OAuth code detected on root path - redirecting to callback handler');
+      const queryString = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+      return res.redirect(`/api/auth/linkedin/callback${queryString}`);
     }
     
     next();
   });
   
-  // Create a catch-all handler for LinkedIn callback to capture any callback format
-  // This must be registered AFTER the more specific routes
+  // Simplified catch-all handler for any path with LinkedIn OAuth code
   app.use((req, res, next) => {
-    if (req.path.includes('linkedin/callback') || req.path.includes('/callback') ||
-        (req.query.code && req.query.state && typeof req.query.code === 'string' && req.query.code.startsWith('AQ'))) {
-      console.log('=== CATCH-ALL LINKEDIN CALLBACK RECEIVED ===');
-      console.log(`Request URL: ${req.originalUrl}`);
-      console.log(`Request path: ${req.path}`);
-      console.log('Query params:', req.query);
+    // If we detect any OAuth code on any unexpected path, redirect it to the proper handler
+    if (req.query.code && req.query.state && typeof req.query.code === 'string' && 
+        (req.query.code.startsWith('AQ') || req.path.includes('callback'))) {
       
-      // Handle this as a LinkedIn callback
-      return linkedInAuthMiddleware(req, res, next);
+      console.log(`LinkedIn OAuth code detected on unexpected path: ${req.path}`);
+      const queryString = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+      return res.redirect(`/api/auth/linkedin/callback${queryString}`);
     }
     
     next();
