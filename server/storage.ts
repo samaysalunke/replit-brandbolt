@@ -3,10 +3,19 @@ import {
   Profile, InsertProfile,
   Post, InsertPost,
   Goal, InsertGoal,
-  ContentSuggestion, InsertContentSuggestion
+  ContentSuggestion, InsertContentSuggestion,
+  users, profiles, posts, goals, contentSuggestions
 } from "@shared/schema";
+import { db } from './db';
+import { eq, and, gt } from 'drizzle-orm';
+import session from "express-session";
+import connectPg from "connect-pg-simple";
+import { pool } from './db';
 
 export interface IStorage {
+  // Session store for authentication
+  sessionStore: session.SessionStore;
+  
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
