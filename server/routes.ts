@@ -312,8 +312,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })(req, res, next);
   };
   
-  // Register the callback URL for the LinkedIn OAuth flow - with detailed error handling
-  app.get('/api/auth/linkedin/callback', linkedInAuthMiddleware);
+  // Special handler for the EXACT callback URL that LinkedIn is actually redirecting to
+  // This is the URL from LinkedIn redirect
+  app.get('/api/auth/linkedin/callback', (req, res, next) => {
+    console.log('=== EXACT LINKEDIN CALLBACK URL HIT ===');
+    console.log(`Request URL: ${req.originalUrl}`);
+    console.log('Query params:', req.query);
+    console.log('Headers:', req.headers);
+    
+    // Use our LinkedIn auth middleware to process this request
+    return linkedInAuthMiddleware(req, res, next);
+  });
   
   // Also register at the root level (needed for some environments)
   app.get('/auth/linkedin/callback', linkedInAuthMiddleware);
